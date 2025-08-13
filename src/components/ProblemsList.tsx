@@ -389,7 +389,7 @@ export function ProblemsList({
   return (
     <div className="h-full flex flex-col overflow-hidden space-y-3">
       {/* Filters - compact white bar */}
-      <div className="rounded-[1.25rem] bg-white shadow-sm px-3 py-2">
+      <div className="rounded-[1.25rem] bg-white shadow-sm px-3 py-2 max-w-[760px] mx-auto w-full">
         <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
           {/* Min elo */}
           <div className="flex items-center gap-2">
@@ -454,7 +454,7 @@ export function ProblemsList({
 
       {/* Scrollable list + pagination */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="rounded-[2rem] bg-white/85 backdrop-blur-sm shadow-sm p-4 md:p-6 font-sf max-w-[900px] mx-auto w-full">
+        <div className="rounded-[2rem] bg-white/85 backdrop-blur-sm shadow-sm p-4 md:p-6 font-sf max-w-[760px] mx-auto w-full">
           <div className="grid gap-4">
             {paginatedProblems.map((problem, index) => {
               const userRating = problemData[problem.id]?.rating;

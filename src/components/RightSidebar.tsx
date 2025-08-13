@@ -143,7 +143,7 @@ export function RightSidebar() {
   // Keeping graduatedSet in state for potential future sidebar widgets
 
   return (
-    <aside className="w-72 flex-shrink-0">
+    <aside className="ml-10 w-72 flex-shrink-0">
       {/* Solid white container */}
       <div className="relative mt-4 md:mt-6 rounded-[2rem] border border-white/25 bg-white shadow-[0_10px_30px_-12px_rgba(31,38,135,0.1)] p-6 space-y-8 overflow-y-auto max-h-[clamp(50rem,65dvh,44rem)]">
         {/* Progress */}
