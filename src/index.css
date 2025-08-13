@@ -85,7 +85,7 @@
   }
   /* Apply light background only when NOT in dark mode */
   html:not(.dark) body {
-    background: linear-gradient(180deg, #e8ddf2 0%, #f2efea 100%);
+    background: #f0f0f0;
   }
 }
 

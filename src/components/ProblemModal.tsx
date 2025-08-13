@@ -1,10 +1,10 @@
-import { useState } from "react";
+import {} from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter, 
+  DialogFooter,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
@@ -31,7 +31,7 @@ const ratingOptions = [
     label: "🥦",
     description: "Borderline incomprehensible",
   },
-  { value: "exhausting", label: "🧊", description: "Mentally exhausting" },
+  { value: "exhausting", label: "🧊", description: "Couldn't solve" },
 ];
 
 export function ProblemModal({
@@ -102,6 +102,19 @@ export function ProblemModal({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Topics */}
+          {problem.topics && problem.topics.length > 0 && (
+            <div className="space-y-2">
+              <h4>Topics</h4>
+              <div className="flex flex-wrap gap-2">
+                {problem.topics.map((t) => (
+                  <Badge key={t} variant="outline" className="text-xs">
+                    {t}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Problem Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-4 flex-wrap">
@@ -157,7 +170,9 @@ export function ProblemModal({
                     key={option.value}
                     variant={isSelected ? "default" : "outline"}
                     onClick={() =>
-                      onRatingChange(rating === option.value ? null : option.value)
+                      onRatingChange(
+                        rating === option.value ? null : option.value
+                      )
                     }
                     className={`h-auto p-4 flex flex-col items-center text-center min-h-[80px] w-full ${
                       isSelected

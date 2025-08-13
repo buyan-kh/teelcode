@@ -16,7 +16,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Trophy,
-  ArrowUpDown,
   Star,
 } from "lucide-react";
 import { LeetCodeProblem, leetcodeProblems } from "../data/leetcode-problems";
@@ -34,6 +33,61 @@ function writeStarred(map: Record<number, boolean>) {
   localStorage.setItem(STAR_KEY, JSON.stringify(map));
 }
 
+// Persist ratings so other components (e.g., RightSidebar) can compute progress
+const RATING_KEY = "problemRatings";
+type RatingMap = Record<number, string | null>;
+function readRatings(): RatingMap {
+  try {
+    return JSON.parse(localStorage.getItem(RATING_KEY) || "{}");
+  } catch {
+    return {} as RatingMap;
+  }
+}
+function writeRatings(map: RatingMap) {
+  localStorage.setItem(RATING_KEY, JSON.stringify(map));
+  // Notify listeners in this tab to update derived UI (progress, counts)
+  try {
+    window.dispatchEvent(new Event("problem-ratings-changed"));
+  } catch {}
+}
+
+// Recall tracking: when a problem is rated as lemon/broccoli it appears in recall with a due date
+type RecallType = "challenging" | "incomprehensible";
+interface RecallEntry {
+  type: RecallType;
+  assignedAt: number; // epoch ms when it was last set to recall
+}
+const RECALL_KEY = "problemRecalls";
+function readRecalls(): Record<number, RecallEntry> {
+  try {
+    return JSON.parse(localStorage.getItem(RECALL_KEY) || "{}");
+  } catch {
+    return {} as Record<number, RecallEntry>;
+  }
+}
+function writeRecalls(map: Record<number, RecallEntry>) {
+  localStorage.setItem(RECALL_KEY, JSON.stringify(map));
+  try {
+    window.dispatchEvent(new Event("problem-recalls-changed"));
+  } catch {}
+}
+
+// Graduations: distinct problems that moved from lemon/broccoli to apples (red/green)
+const GRADUATED_SET_KEY = "recallGraduatedIds";
+function readGraduatedSet(): Record<number, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(GRADUATED_SET_KEY) || "{}");
+  } catch {
+    return {} as Record<number, boolean>;
+  }
+}
+function writeGraduatedSet(map: Record<number, boolean>) {
+  localStorage.setItem(GRADUATED_SET_KEY, JSON.stringify(map));
+  try {
+    window.dispatchEvent(new Event("problem-recalls-changed"));
+  } catch {}
+}
+
 interface ProblemData {
   notes: string;
   rating: string | null;
@@ -42,9 +96,13 @@ interface ProblemData {
 
 type ProblemsListProps = {
   filterStarredOnly?: boolean;
+  filterRecallType?: "challenging" | "incomprehensible";
 };
 
-export function ProblemsList({ filterStarredOnly = false }: ProblemsListProps) {
+export function ProblemsList({
+  filterStarredOnly = false,
+  filterRecallType,
+}: ProblemsListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [minRating, setMinRating] = useState("");
@@ -77,21 +135,71 @@ export function ProblemsList({ filterStarredOnly = false }: ProblemsListProps) {
     });
   }, []);
 
-  // Compute base dataset with optional star filter
+  // Initialize ratings state from storage so it persists between sessions
+  useEffect(() => {
+    const ratings = readRatings();
+    if (Object.keys(ratings).length === 0) return;
+    setProblemData((prev) => {
+      const next = { ...prev } as Record<number, ProblemData>;
+      for (const [idStr, rating] of Object.entries(ratings)) {
+        const id = Number(idStr);
+        next[id] = {
+          notes: next[id]?.notes || "",
+          rating: (rating as string) || null,
+          starred: next[id]?.starred || false,
+        };
+      }
+      return next;
+    });
+  }, []);
+
+  // Listen for global open-problem requests (from RightSidebar recalls etc.)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<{ id: number }>;
+      const problem = leetcodeProblems.find((p) => p.id === custom.detail?.id);
+      if (problem) {
+        setSelectedProblem(problem);
+        setIsModalOpen(true);
+      }
+    };
+    window.addEventListener("open-problem", handler as EventListener);
+    return () =>
+      window.removeEventListener("open-problem", handler as EventListener);
+  }, []);
+
+  // Compute base dataset with optional star and recall filters
   const baseProblems = useMemo(() => {
-    if (!filterStarredOnly) return leetcodeProblems;
-    const starMap = Object.keys(problemData).length
-      ? Object.fromEntries(
-          Object.entries(problemData).map(([k, v]) => [Number(k), !!v.starred])
-        )
-      : readStarred();
-    const starIds = new Set(
-      Object.entries(starMap)
-        .filter(([, val]) => !!val)
-        .map(([id]) => Number(id))
-    );
-    return leetcodeProblems.filter((p) => starIds.has(p.id));
-  }, [filterStarredOnly, problemData]);
+    let base = leetcodeProblems;
+    if (filterStarredOnly) {
+      const starMap = Object.keys(problemData).length
+        ? Object.fromEntries(
+            Object.entries(problemData).map(([k, v]) => [
+              Number(k),
+              !!v.starred,
+            ])
+          )
+        : readStarred();
+      const starIds = new Set(
+        Object.entries(starMap)
+          .filter(([, val]) => !!val)
+          .map(([id]) => Number(id))
+      );
+      base = base.filter((p) => starIds.has(p.id));
+    }
+
+    if (filterRecallType) {
+      const recalls = readRecalls();
+      const ids = new Set(
+        Object.entries(recalls)
+          .filter(([, entry]) => (entry as any).type === filterRecallType)
+          .map(([id]) => Number(id))
+      );
+      base = base.filter((p) => ids.has(p.id));
+    }
+
+    return base;
+  }, [filterStarredOnly, problemData, filterRecallType]);
 
   const filteredProblems = useMemo(() => {
     return baseProblems.filter((problem) => {
@@ -102,12 +210,23 @@ export function ProblemsList({ filterStarredOnly = false }: ProblemsListProps) {
   }, [baseProblems, minRating, maxRating]);
 
   const sortedProblems = useMemo(() => {
+    // If viewing recall lists, sort by nearest due date
+    if (filterRecallType) {
+      const recalls = readRecalls();
+      const dueOf = (id: number) => {
+        const entry = recalls[id];
+        if (!entry) return Number.MAX_SAFE_INTEGER;
+        const daysDelay = entry.type === "incomprehensible" ? 5 : 3;
+        return entry.assignedAt + daysDelay * 24 * 60 * 60 * 1000;
+      };
+      return [...filteredProblems].sort((a, b) => dueOf(a.id) - dueOf(b.id));
+    }
     if (!sortDirection) return filteredProblems;
     return [...filteredProblems].sort((a, b) => {
       if (sortDirection === "asc") return a.eloScore - b.eloScore;
       return b.eloScore - a.eloScore;
     });
-  }, [filteredProblems, sortDirection]);
+  }, [filteredProblems, sortDirection, filterRecallType]);
 
   const totalPages = Math.ceil(sortedProblems.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -136,14 +255,66 @@ export function ProblemsList({ filterStarredOnly = false }: ProblemsListProps) {
 
   const handleRatingChange = (rating: string | null) => {
     if (!selectedProblem) return;
-    setProblemData((prev) => ({
-      ...prev,
-      [selectedProblem.id]: {
-        notes: prev[selectedProblem.id]?.notes || "",
-        rating,
-        starred: prev[selectedProblem.id]?.starred || false,
-      },
-    }));
+    setProblemData((prev) => {
+      const updated = {
+        ...prev,
+        [selectedProblem.id]: {
+          notes: prev[selectedProblem.id]?.notes || "",
+          rating,
+          starred: prev[selectedProblem.id]?.starred || false,
+        },
+      } as Record<number, ProblemData>;
+
+      // persist to localStorage
+      const currentRatings = readRatings();
+      const nextRatings: RatingMap = {
+        ...currentRatings,
+        [selectedProblem.id]: rating,
+      };
+      // Do not store nulls as keys to keep storage lean
+      if (rating === null) {
+        delete nextRatings[selectedProblem.id];
+      }
+      writeRatings(nextRatings);
+
+      // Update recalls and graduation tracking based on transitions
+      const prevRating = prev[selectedProblem.id]?.rating || null;
+      const isPrevRecall =
+        prevRating === "challenging" || prevRating === "incomprehensible";
+      const isNowRecall =
+        rating === "challenging" || rating === "incomprehensible";
+      const isNowApple = rating === "yum" || rating === "desirable";
+
+      // Read current stores
+      const recalls = readRecalls();
+      const graduatedSet = readGraduatedSet();
+
+      if (isNowRecall) {
+        // Assign or reassign recall with fresh timestamp and type
+        const type = rating as RecallType;
+        const assignedAt = Date.now();
+        recalls[selectedProblem.id] = { type, assignedAt };
+        writeRecalls(recalls);
+        // Immediately notify listeners in this tab without relying on storage event
+        try {
+          window.dispatchEvent(new Event("problem-recalls-changed"));
+        } catch {}
+      } else {
+        // If no longer recall-rated, ensure it's removed from recalls
+        if (recalls[selectedProblem.id]) {
+          delete recalls[selectedProblem.id];
+          writeRecalls(recalls);
+        }
+      }
+
+      // Graduation: transitioned from recall (lemon/broccoli) to apples (red/green)
+      if (isPrevRecall && isNowApple) {
+        graduatedSet[selectedProblem.id] = true;
+        writeGraduatedSet(graduatedSet);
+      }
+
+      return updated;
+    });
   };
 
   const toggleStar = (id: number) => {
@@ -188,7 +359,7 @@ export function ProblemsList({ filterStarredOnly = false }: ProblemsListProps) {
       case "incomprehensible":
         return "Borderline incomprehensible";
       case "exhausting":
-        return "Mentally exhausting";
+        return "Couldn't solve";
       default:
         return null;
     }
@@ -283,7 +454,7 @@ export function ProblemsList({ filterStarredOnly = false }: ProblemsListProps) {
 
       {/* Scrollable list + pagination */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="rounded-[2rem] bg-white/85 backdrop-blur-sm shadow-sm p-4 md:p-6 font-sf">
+        <div className="rounded-[2rem] bg-white/85 backdrop-blur-sm shadow-sm p-4 md:p-6 font-sf max-w-[900px] mx-auto w-full">
           <div className="grid gap-4">
             {paginatedProblems.map((problem, index) => {
               const userRating = problemData[problem.id]?.rating;
@@ -294,7 +465,9 @@ export function ProblemsList({ filterStarredOnly = false }: ProblemsListProps) {
                   key={problem.id}
                   className={`cursor-pointer hover:shadow-md transition-shadow bg-white/80 backdrop-blur-sm ${
                     userRating
-                      ? "bg-green-50 dark:bg-transparent dark:border-green-500"
+                      ? problemData[problem.id]?.rating === "exhausting"
+                        ? "bg-red-50 dark:bg-transparent dark:border-red-500"
+                        : "bg-green-50 dark:bg-transparent dark:border-green-500"
                       : ""
                   }`}
                   onClick={() => handleProblemClick(problem)}
@@ -318,7 +491,7 @@ export function ProblemsList({ filterStarredOnly = false }: ProblemsListProps) {
                               {ratingDescription}
                             </Badge>
                           )}
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 pb-1">
                             <Trophy className="w-3 h-3" />
                             <span>{problem.eloScore}</span>
                           </div>
@@ -364,73 +537,73 @@ export function ProblemsList({ filterStarredOnly = false }: ProblemsListProps) {
               );
             })}
           </div>
-        </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 py-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(1)}
-              disabled={currentPage === 1}
-            >
-              <ChevronsLeft className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
+          {/* Pagination inside white container (non-sticky) */}
+          {totalPages > 1 && (
+            <div className="pt-4 flex items-center justify-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => goToPage(1)}
+                disabled={currentPage === 1}
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
 
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
 
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => goToPage(pageNum)}
-                    className="w-10"
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => goToPage(pageNum)}
+                      className="w-10"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => goToPage(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </Button>
             </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(totalPages)}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronsRight className="w-4 h-4" />
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Modal */}

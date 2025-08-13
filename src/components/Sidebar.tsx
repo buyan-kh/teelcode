@@ -1,6 +1,15 @@
 // src/components/Sidebar.tsx
+import { ProfileCard } from "./ProfileCard";
 
-type AppRoute = "home" | "recall" | "my-list" | "marathon" | "mock";
+type AppRoute =
+  | "home"
+  | "recall"
+  | "recall-lemon"
+  | "recall-broccoli"
+  | "my-list"
+  | "marathon"
+  | "profile"
+  | "mock";
 
 type SidebarProps = {
   active: AppRoute;
@@ -17,32 +26,34 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-80 flex-shrink-0 h-screen m-0 p-[1.6rem] rounded-r-[2rem] bg-white shadow-sm border-r">
-      {/* Brand */}
-      <div className="flex items-center gap-[0.8rem] mb-[2.4rem]">
-        <img
-          src="https://ui-avatars.com/api/?name=T&background=dbeafe&color=111&size=128"
-          alt="teelcode avatar"
-          className="w-[3.2rem] h-[3.2rem] rounded-full object-cover"
-        />
-        <span className="text-2xl text-indigo-400 font-instrument-condensed condense-90">
-          teelcode
-        </span>
+    <aside className="w-65 flex-shrink-0 h-full m-0 p-[1.2rem] rounded-r-[2rem] bg-white shadow-sm border-r flex flex-col">
+      {/* Brand inside sidebar */}
+      <div className="px-4 mb-[1.2rem]">
+        <div className="flex items-center gap-3 rounded-xl border bg-white/80 backdrop-blur-sm px-4 py-3 shadow-sm">
+          <img
+            src="https://ui-avatars.com/api/?name=T&background=dbeafe&color=111"
+            alt="teelcode"
+            className="w-10 h-10 rounded-full"
+          />
+          <div className="leading-tight">
+            <p className="text-sm font-semibold">teelcode</p>
+            <p className="text-xs text-transparent select-none">.</p>
+          </div>
+        </div>
       </div>
-
       {/* Section: my teel */}
       <div className="mb-[1.6rem]">
-        <p className="text-[0.9rem] text-muted-foreground mb-[0.8rem] font-instrument-condensed condense-90">
-          my teel
+        <p className="text-[1.2rem] text-muted-foreground mb-[0.8rem] font-sf condense-90 uppercase tracking-wide">
+          MY TEEL
         </p>
-        <nav className="space-y-[1.2rem]">
+        <nav className="space-y-[0.05rem]">
           {items.map(({ key, label }) => (
             <button
               key={key}
               type="button"
               onClick={() => onNavigate(key)}
               aria-current={active === key ? "page" : undefined}
-              className="block w-full text-left font-instrument-condensed text-[1.8rem] leading-none"
+              className="block w-full text-left font-instrument-condensed text-[1.2rem] leading-none"
             >
               <span
                 className="px-[1.2rem] py-[0.6rem] rounded-2xl inline-block w-full"
@@ -58,34 +69,37 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
         </nav>
       </div>
 
-      {/* Section: lorem lorem */}
-      <div className="mt-[2.4rem]">
-        <p className="text-[0.9rem] text-muted-foreground mb-[0.8rem] font-instrument-condensed condense-90">
-          lorem lorem
+      {/* Section: dashboard + profile */}
+      <div className="mt-[1.2rem]">
+        <p className="text-[1.2rem] text-muted-foreground mb-[0.8rem] font-sf condense-90 uppercase tracking-wide">
+          LOREM LOREM
         </p>
-        <nav className="space-y-[1.2rem]">
-          {(["recall", "my-list", "marathon"] as AppRoute[]).map((key) => (
+        <nav className="space-y-[0.05rem]">
+          {(["dashboard", "profile"] as AppRoute[]).map((key) => (
             <button
               key={key}
               type="button"
               onClick={() => onNavigate(key)}
               aria-current={active === key ? "page" : undefined}
-              className="block w-full text-left font-instrument-condensed text-[1.8rem] leading-none"
+              className="block w-full text-left font-instrument-condensed text-[1.2rem] leading-none"
             >
               <span
-                className="px-0 py-0 rounded-2xl inline-block w-full"
+                className="px-[1.2rem] py-[0.6rem] rounded-2xl inline-block w-full"
                 style={{
                   backgroundColor:
                     active === key ? ("#AA92FF33" as any) : "transparent",
                 }}
               >
-                <span className="condense-90 inline-block">
-                  {key === "my-list" ? "my list" : key}
-                </span>
+                <span className="condense-90 inline-block">{key}</span>
               </span>
             </button>
           ))}
         </nav>
+      </div>
+
+      {/* Profile card anchored to sidebar bottom */}
+      <div className="mt-auto">
+        <ProfileCard />
       </div>
     </aside>
   );
