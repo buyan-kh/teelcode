@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Italiana&display=swap");
 
 @layer base {
   :root {
@@ -48,17 +50,47 @@
 }
 
 @layer base {
+  .font-instrument {
+    font-family: "Instrument Serif", serif;
+  }
+  .font-instrument-condensed {
+    font-family: "Italiana", "Instrument Serif", serif;
+    letter-spacing: 0.1px;
+  }
+  /* SF Pro / system sans */
+  .font-sf {
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji",
+      "Segoe UI Emoji";
+  }
+  /* Horizontal condensation utilities */
+  .condense-95 {
+    transform: scaleX(0.95);
+    transform-origin: left;
+  }
+  .condense-90 {
+    transform: scaleX(0.9);
+    transform-origin: left;
+  }
+  .condense-85 {
+    transform: scaleX(0.85);
+    transform-origin: left;
+  }
+
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+  }
+  /* Apply light background only when NOT in dark mode */
+  html:not(.dark) body {
+    background: linear-gradient(180deg, #e8ddf2 0%, #f2efea 100%);
   }
 }
 
 @theme {
   --breakpoint-2xl: 1400px;
-
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
@@ -78,14 +110,11 @@
   --color-popover-foreground: hsl(var(--popover-foreground));
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
-
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
-
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
-
   @keyframes accordion-down {
     from {
       height: 0;
