@@ -26,7 +26,7 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-65 flex-shrink-0 h-full m-0 p-[1.2rem] rounded-r-[2rem] bg-white shadow-sm border-r flex flex-col">
+    <aside className="h-full m-0 p-4 rounded-r-[2rem] bg-white shadow-sm border-r flex flex-col">
       {/* Brand inside sidebar */}
       <div className="px-4 mb-[1.2rem]">
         <div className="flex items-center gap-3 rounded-xl border bg-white/80 backdrop-blur-sm px-4 py-3 shadow-sm">

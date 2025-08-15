@@ -49,6 +49,7 @@ export function RightSidebar() {
     Record<number, boolean>
   >({});
   const [, setNowTs] = useState<number>(() => Date.now());
+  const [userElo, setUserElo] = useState<number>(1000);
 
   // Load on mount and subscribe to changes (same-tab and cross-tab)
   useEffect(() => {
@@ -67,18 +68,42 @@ export function RightSidebar() {
       } catch {
         setGraduatedSet({});
       }
+      // Load user ELO
+      try {
+        const savedElo = localStorage.getItem("userElo");
+        if (savedElo) {
+          const eloValue = parseInt(savedElo, 10);
+          console.log("🔄 RightSidebar loading ELO:", eloValue);
+          setUserElo(eloValue);
+        } else {
+          console.log("🔄 RightSidebar: No saved ELO, using default 1000");
+          setUserElo(1000);
+        }
+      } catch (error) {
+        console.warn("🔄 RightSidebar: Error loading ELO:", error);
+        setUserElo(1000);
+      }
     };
 
     loadAll();
 
-    const onRatingsChange = () => loadAll();
+    const onRatingsChange = () => {
+      console.log("🔄 RightSidebar: Ratings changed event");
+      loadAll();
+    };
     const onRecallsChange = () => loadAll();
+    const onEloChange = () => {
+      console.log("🔄 RightSidebar: ELO changed event received");
+      loadAll();
+    };
     window.addEventListener("problem-ratings-changed", onRatingsChange);
     window.addEventListener("problem-recalls-changed", onRecallsChange);
+    window.addEventListener("user-elo-changed", onEloChange);
     window.addEventListener("storage", onRatingsChange);
     return () => {
       window.removeEventListener("problem-ratings-changed", onRatingsChange);
       window.removeEventListener("problem-recalls-changed", onRecallsChange);
+      window.removeEventListener("user-elo-changed", onEloChange);
       window.removeEventListener("storage", onRatingsChange);
     };
   }, []);
@@ -143,9 +168,9 @@ export function RightSidebar() {
   // Keeping graduatedSet in state for potential future sidebar widgets
 
   return (
-    <aside className="ml-10 w-72 flex-shrink-0">
+    <aside className="w-full">
       {/* Solid white container */}
-      <div className="relative mt-4 md:mt-6 rounded-[2rem] border border-white/25 bg-white shadow-[0_10px_30px_-12px_rgba(31,38,135,0.1)] p-6 space-y-8 overflow-y-auto max-h-[clamp(50rem,65dvh,44rem)]">
+      <div className="relative mt-2 rounded-[2rem] border border-white/25 bg-white shadow-[0_10px_30px_-12px_rgba(31,38,135,0.1)] p-6 space-y-8 overflow-y-auto max-h-[calc(100vh-2rem)]">
         {/* Progress */}
 
         {/* Recalls */}
@@ -220,6 +245,12 @@ export function RightSidebar() {
             </div>
           </CardContent>
         </Card>
+        <Card className="bg-white border border-white/20 shadow-sm rounded-2xl">
+          <CardContent className="pt-6">
+            <h3 className="text-sm font-medium mb-2">Current ELO</h3>
+            <p className="text-lg font-semibold">{userElo}</p>
+          </CardContent>
+        </Card>
 
         {/* Rating breakdown */}
         <Card className="bg-white border border-white/20 shadow-sm rounded-2xl">
@@ -241,10 +272,6 @@ export function RightSidebar() {
               <div className="flex items-center justify-between">
                 <span>🥦 Incomprehensible</span>
                 <span className="font-semibold">{counts.incomprehensible}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>🧊 Mentally exhausting</span>
-                <span className="font-semibold">{counts.exhausting}</span>
               </div>
             </div>
           </CardContent>

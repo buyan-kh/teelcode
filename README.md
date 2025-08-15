@@ -1,3 +1,24 @@
+## Supabase setup (Auth, DB, Edge Functions)
+
+1. Create a Supabase project and get `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+
+2. Create a `.env.local` file in project root:
+
+```
+VITE_SUPABASE_URL=your-url
+VITE_SUPABASE_ANON_KEY=your-anon
+```
+
+3. (Dev only) If using client-side OpenAI temporarily, also add:
+
+```
+VITE_OPENAI_API_KEY=sk-...
+```
+
+4. Add SQL (in Supabase SQL editor) for tables and RLS later.
+
+5. Edge Functions: create `marathon-plan` and `chat-stream` with server-side `OPENAI_API_KEY`.
+
 # Figma Make Local Runner
 
 A skeleton project designed to run code downloaded from Figma Make locally, so you can easily modify the generated code with your favorite tools.

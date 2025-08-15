@@ -134,28 +134,32 @@ export function ProblemModal({
           <div className="space-y-2">
             <h4>Resources</h4>
             <div className="flex gap-3">
-              <Button variant="outline" size="sm" asChild>
-                <a
-                  href={problem.problemUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <BookOpen className="w-4 h-4 mr-2" />
-                  Problem
-                  <ExternalLink className="w-3 h-3 ml-1" />
-                </a>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <a
-                  href={problem.solutionVideoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Video className="w-4 h-4 mr-2" />
-                  Solution Video
-                  <ExternalLink className="w-3 h-3 ml-1" />
-                </a>
-              </Button>
+              {problem.problemUrl && (
+                <Button variant="outline" size="sm" asChild>
+                  <a
+                    href={problem.problemUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Problem
+                    <ExternalLink className="w-3 h-3 ml-1" />
+                  </a>
+                </Button>
+              )}
+              {problem.solutionVideoUrl && (
+                <Button variant="outline" size="sm" asChild>
+                  <a
+                    href={problem.solutionVideoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Video className="w-4 h-4 mr-2" />
+                    Solution Video
+                    <ExternalLink className="w-3 h-3 ml-1" />
+                  </a>
+                </Button>
+              )}
             </div>
           </div>
 

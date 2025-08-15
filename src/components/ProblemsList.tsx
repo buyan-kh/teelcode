@@ -21,6 +21,36 @@ import {
 import { LeetCodeProblem, leetcodeProblems } from "../data/leetcode-problems";
 import { ProblemModal } from "./ProblemModal";
 
+// ELO calculation function (same as MarathonPage)
+function calculateNewElo(
+  userElo: number,
+  problemElo: number,
+  solved: boolean
+): number {
+  // If the user didn't solve the problem, their Elo does not change.
+  if (!solved) {
+    return Math.round(userElo);
+  }
+
+  // Dynamic K-Factor
+  let K: number;
+  if (problemElo < 2000) {
+    K = 60;
+  } else if (problemElo < 2600) {
+    K = 100;
+  } else {
+    K = 300;
+  }
+
+  // Calculate Expected Outcome
+  const expectedProb = 1 / (1 + Math.pow(10, (problemElo - userElo) / 400));
+
+  // Calculate New Elo
+  const newElo = userElo + K * (1 - expectedProb);
+
+  return Math.round(newElo);
+}
+
 const STAR_KEY = "starredProblems";
 function readStarred(): Record<number, boolean> {
   try {
@@ -116,6 +146,29 @@ export function ProblemsList({
   const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(
     null
   );
+
+  // ELO system state
+  const [userElo, setUserElo] = useState<number>(1000);
+  const [solvedProblems, setSolvedProblems] = useState<Set<number>>(new Set());
+
+  // Load ELO data from storage
+  useEffect(() => {
+    try {
+      const savedElo = localStorage.getItem("userElo");
+      const savedSolved = localStorage.getItem("solvedProblems");
+
+      if (savedElo) {
+        setUserElo(parseInt(savedElo, 10));
+      }
+
+      if (savedSolved) {
+        const solvedArray = JSON.parse(savedSolved);
+        setSolvedProblems(new Set(solvedArray));
+      }
+    } catch (error) {
+      console.warn("Failed to load ELO data:", error);
+    }
+  }, []);
 
   // Initialize starred state from storage
   useEffect(() => {
@@ -277,6 +330,73 @@ export function ProblemsList({
       }
       writeRatings(nextRatings);
 
+      // ELO calculation based on solve state change
+      const problemId = selectedProblem.id;
+      const problemElo = selectedProblem.eloScore;
+      const previousRating = prev[selectedProblem.id]?.rating || null;
+
+      // Determine if problem was previously solved and if it's solved now
+      // In ProblemsList: "exhausting" = icecube (not solved), others = solved
+      const wasSolved =
+        previousRating !== null && previousRating !== "exhausting";
+      const isSolvedNow = rating !== null && rating !== "exhausting";
+
+      if (!wasSolved && isSolvedNow) {
+        // Problem newly solved - gain ELO
+        const newElo = calculateNewElo(userElo, problemElo, true);
+        setUserElo(newElo);
+        setSolvedProblems((prev) => new Set([...prev, problemId]));
+
+        // Persist ELO data
+        localStorage.setItem("userElo", newElo.toString());
+        const updatedSolvedArray = [...solvedProblems, problemId];
+        localStorage.setItem(
+          "solvedProblems",
+          JSON.stringify(updatedSolvedArray)
+        );
+
+        // Notify other components about ELO change (defer to avoid setState during render)
+        setTimeout(
+          () => window.dispatchEvent(new Event("user-elo-changed")),
+          0
+        );
+
+        console.log(
+          `🎯 Problem ${problemId} solved! ELO: ${userElo} → ${newElo} (+${
+            newElo - userElo
+          })`
+        );
+      } else if (wasSolved && !isSolvedNow) {
+        // Problem unrated/unsolved - reverse the ELO gain
+        // Calculate what the gain was and subtract it
+        const originalGain =
+          calculateNewElo(userElo, problemElo, true) - userElo;
+        const newElo = Math.max(1000, userElo - originalGain); // Don't go below 1000
+        setUserElo(newElo);
+        setSolvedProblems((prev) => {
+          const updated = new Set(prev);
+          updated.delete(problemId);
+          return updated;
+        });
+
+        // Persist ELO data
+        localStorage.setItem("userElo", newElo.toString());
+        const updatedSolved = [...solvedProblems].filter(
+          (id) => id !== problemId
+        );
+        localStorage.setItem("solvedProblems", JSON.stringify(updatedSolved));
+
+        // Notify other components about ELO change (defer to avoid setState during render)
+        setTimeout(
+          () => window.dispatchEvent(new Event("user-elo-changed")),
+          0
+        );
+
+        console.log(
+          `❌ Problem ${problemId} unrated! ELO: ${userElo} → ${newElo} (-${originalGain})`
+        );
+      }
+
       // Update recalls and graduation tracking based on transitions
       const prevRating = prev[selectedProblem.id]?.rating || null;
       const isPrevRecall =
@@ -387,7 +507,7 @@ export function ProblemsList({
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden space-y-3">
+    <div className="flex flex-col space-y-3">
       {/* Filters - compact white bar */}
       <div className="rounded-[1.25rem] bg-white shadow-sm px-3 py-2 max-w-[760px] mx-auto w-full">
         <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
@@ -452,8 +572,8 @@ export function ProblemsList({
         </div>
       </div>
 
-      {/* Scrollable list + pagination */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      {/* List + pagination (scroll handled by main column) */}
+      <div className="flex-1 min-h-0">
         <div className="rounded-[2rem] bg-white/85 backdrop-blur-sm shadow-sm p-4 md:p-6 font-sf max-w-[760px] mx-auto w-full">
           <div className="grid gap-4">
             {paginatedProblems.map((problem, index) => {

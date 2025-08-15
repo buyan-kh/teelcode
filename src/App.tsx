@@ -91,9 +91,9 @@ export default function App() {
   }, [route]);
 
   return (
-    <div className="h-screen overflow-hidden flex">
-      {/* Left Column: Detached brand + sidebar */}
-      <div className="ml-35 w-70 flex-shrink-0 flex flex-col gap-6 py-4 self-stretch overflow-y-auto">
+    <div className="h-screen flex">
+      {/* Left sidebar */}
+      <div className="w-[260px] flex-shrink-0 overflow-y-auto sticky top-0 h-screen py-4 px-0">
         <Sidebar
           active={
             (route === "recall-lemon" || route === "recall-broccoli"
@@ -105,13 +105,16 @@ export default function App() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-1 pt-8 pb-0 flex flex-col overflow-hidden">
+      <main className="flex-1 min-w-0 px-6 pt-8 pb-0 flex flex-col">
         <Header />
-        <div className="flex-1 min-h-0">{content}</div>
+        {/* One and only scroll area for center column */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="max-w-[860px] w-full mx-auto">{content}</div>
+        </div>
       </main>
 
-      {/* Right Column: Right Sidebar content only */}
-      <div className="mr-35 w-80 flex-shrink-0 flex flex-col gap-6 py-16 self-start max-h-screen overflow-y-auto">
+      {/* Right sidebar */}
+      <div className="w-[320px] flex-shrink-0 overflow-y-auto sticky top-0 h-screen py-6 px-4">
         <RightSidebar />
       </div>
     </div>
