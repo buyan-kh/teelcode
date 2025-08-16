@@ -59,8 +59,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-
-
   useEffect(() => {
     if (initialized) {
       console.log("🔥 Already initialized, skipping...");
