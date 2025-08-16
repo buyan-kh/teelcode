@@ -9,6 +9,8 @@ import {
 } from "../lib/openai";
 import { ProblemModal } from "./ProblemModal";
 import { Plus } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { checkAndUpdateChatLimit, getChatLimitInfo } from "../lib/supabaseService";
 
 type Preference = "lemon" | "broccoli" | "surprise" | "text";
 
@@ -73,6 +75,7 @@ function formatCompletionTime(ms: number): string {
 // ELO calculation removed - no longer tracking user ELO
 
 export function MarathonPage() {
+  const { user } = useAuth();
   const [prompt, setPrompt] = useState("");
   const [preference, setPreference] = useState<Preference | null>(null);
   const [suggestions, setSuggestions] = useState<number[]>([]);
@@ -88,6 +91,7 @@ export function MarathonPage() {
   const [sessionId, setSessionId] = useState<string>("");
   const [started, setStarted] = useState(false);
   const [startReady, setStartReady] = useState(false);
+  const [chatLimitInfo, setChatLimitInfo] = useState<{ used: number; remaining: number; resetDate: string }>({ used: 0, remaining: 3, resetDate: new Date().toISOString().split('T')[0] });
 
   // Chat history state
   const [chatSessions, setChatSessions] = useState<Record<string, ChatSession>>(
@@ -149,6 +153,13 @@ export function MarathonPage() {
       window.removeEventListener("storage", handleRatingChange);
     };
   }, []);
+
+  // Load chat limit info when user changes
+  useEffect(() => {
+    if (user?.id) {
+      getChatLimitInfo(user.id).then(setChatLimitInfo);
+    }
+  }, [user?.id]);
 
   // timer
   const [running, setRunning] = useState(false);
@@ -331,8 +342,23 @@ export function MarathonPage() {
     pref: Preference | null,
     conversationText: string
   ) => {
+    if (!user?.id) {
+      alert("Please log in to use the AI marathon feature.");
+      return;
+    }
+
+    // Check chat limit before proceeding
+    const { allowed, remaining } = await checkAndUpdateChatLimit(user.id);
+    if (!allowed) {
+      alert("You've reached your daily limit of 3 AI marathon requests. Please try again tomorrow!");
+      return;
+    }
+
     setIsLoading(true);
     setPreference(pref);
+
+    // Update chat limit info
+    setChatLimitInfo(prev => ({ ...prev, remaining }));
 
     // Ask OpenAI to convert the conversation context + preference into a filter plan
     const plan = await analyzeMarathonPrompt(conversationText, pref);
@@ -491,8 +517,23 @@ export function MarathonPage() {
   };
 
   const generate = async (pref: Preference | null) => {
+    if (!user?.id) {
+      alert("Please log in to use the AI marathon feature.");
+      return;
+    }
+
+    // Check chat limit before proceeding
+    const { allowed, remaining } = await checkAndUpdateChatLimit(user.id);
+    if (!allowed) {
+      alert("You've reached your daily limit of 3 AI marathon requests. Please try again tomorrow!");
+      return;
+    }
+
     setIsLoading(true);
     setPreference(pref);
+
+    // Update chat limit info
+    setChatLimitInfo(prev => ({ ...prev, remaining }));
 
     // Ask OpenAI to convert the prompt + preference into a filter plan
     const plan = await analyzeMarathonPrompt(prompt, pref);
@@ -1285,6 +1326,16 @@ export function MarathonPage() {
                 </div>
               )}
 
+              {/* Chat limit info */}
+              <div className="w-full max-w-3xl px-4 pb-2">
+                <div className="text-sm text-gray-600 text-center">
+                  AI requests remaining today: <span className="font-semibold">{chatLimitInfo.remaining}</span>
+                  {chatLimitInfo.remaining === 0 && (
+                    <span className="text-red-500 ml-2">• Limit reached, try again tomorrow!</span>
+                  )}
+                </div>
+              </div>
+
               {/* Chat input */}
               <div className="w-full max-w-3xl flex items-center gap-2 px-4 pb-4">
                 <Input
@@ -1295,11 +1346,12 @@ export function MarathonPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") submitPrompt();
                   }}
+                  disabled={chatLimitInfo.remaining === 0}
                 />
                 <Button
                   className="h-12 rounded-full px-6"
                   onClick={submitPrompt}
-                  disabled={isLoading}
+                  disabled={isLoading || chatLimitInfo.remaining === 0}
                 >
                   Send
                 </Button>
