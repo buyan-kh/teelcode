@@ -7,6 +7,9 @@ import { RightSidebar } from "./components/RightSidebar";
 import { ProfilePage } from "./components/ProfilePage";
 import { RecallPage } from "./components/RecallPage";
 import { MarathonPage } from "./components/MarathonPage";
+import { LoadingScreen } from "./components/LoadingScreen";
+import { useData } from "./contexts/DataContext";
+import { useAuth } from "./contexts/AuthContext";
 // import { DataMigrationBanner } from "./components/DataMigrationBanner"; // Not needed with auto-sync
 // import { Card, CardContent } from "./components/ui/card";
 
@@ -47,6 +50,8 @@ function getRouteFromHash(): AppRoute {
 
 export default function App() {
   const [route, setRoute] = useState<AppRoute>(() => getRouteFromHash());
+  const { user, loading: authLoading } = useAuth();
+  const { isLoading: dataLoading } = useData();
 
   useEffect(() => {
     const onHash = () => setRoute(getRouteFromHash());
@@ -90,6 +95,11 @@ export default function App() {
         return <ProblemsList />;
     }
   }, [route]);
+
+  // Show loading screen when user is authenticated but data is still loading
+  if (user && dataLoading) {
+    return <LoadingScreen message="Loading your data..." />;
+  }
 
   return (
     <div className="h-screen flex">

@@ -169,10 +169,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("🔐 Auth state changed:", event, session?.user?.email);
 
-      // Don't update state during initialization
-      if (isMounted && initialized) {
+      // Always update state for SIGNED_IN/SIGNED_OUT events
+      if (
+        isMounted &&
+        (event === "SIGNED_IN" || event === "SIGNED_OUT" || initialized)
+      ) {
         setSession(session);
         setUser(session?.user ?? null);
+        setLoading(false);
       }
 
       if (event === "SIGNED_IN" && session?.user) {
