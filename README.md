@@ -1,91 +1,90 @@
-## Supabase setup (Auth, DB, Edge Functions)
+# TeelCode 🧠
 
-1. Create a Supabase project and get `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+**Live Demo: [https://teelcode.vercel.app/](https://teelcode.vercel.app/)**
 
-2. Create a `.env.local` file in project root:
+A personalized LeetCode learning platform that helps you improve your coding skills through ELO-ranked problems and spaced repetition.
 
-```
-VITE_SUPABASE_URL=your-url
-VITE_SUPABASE_ANON_KEY=your-anon
-```
+![TeelCode Dashboard](1.png)
+![Problem Solving Interface](2.png)
 
-3. (Dev only) If using client-side OpenAI temporarily, also add:
+## 🎯 What is TeelCode?
 
-```
-VITE_OPENAI_API_KEY=sk-...
-```
+TeelCode contains **2800+ LeetCode problems** from every single contest, ranked in Codeforces-style ELO. This unique approach helps you climb the learning curve gradually and efficiently.
 
-4. Add SQL (in Supabase SQL editor) for tables and RLS later.
+## 🚀 Why I Built This
 
-5. Edge Functions: create `marathon-plan` and `chat-stream` with server-side `OPENAI_API_KEY`.
+When I first started LeetCoding, I was immediately facing really hard problems far above my level. Trying to solve them while watching videos and trying to understand the code often left me burned out.
 
-# Figma Make Local Runner
+**This platform solves that problem.**
 
-A skeleton project designed to run code downloaded from Figma Make locally, so you can easily modify the generated code with your favorite tools.
+By solving problems ranked in ELO and climbing up, I found it was very efficient for my learning. I could feel myself getting better at different problems, I could feel my skills improving, my ELO going up.
 
-## ⚡ How It Works
+This way, you can solve lots of problems and also move up slowly but steadily and surely.
 
-1. **Pre-installed Packages**  
-   This project comes with many packages that Figma Make-generated code may require (see `package.json`). If you encounter errors about missing dependencies, simply install the required packages using `npm install <package-name>`.
+## 📊 My Experience
 
-2. **Automatic Removal of Version Specifiers in Imports**  
-   Figma Make sometimes generates import statements with explicit version specifiers, for example:
+I've solved around **150 problems** from this list, ranging from about **1200 ELO to 1700 ELO**. The progression is real and measurable!
 
-   ```js
-   import { Slot } from "@radix-ui/react-slot@1.1.2";
-   ```
+## ✨ Key Features
 
-   This can cause version conflicts or issues with local development.  
-   **Solution:**  
-   This project uses a custom Vite plugin that automatically removes version specifiers from import statements during build and development.  
-   The above import will be transformed to:
+### 🎯 ELO-Ranked Problems
+- **2800+ problems** from every LeetCode contest
+- **Codeforces-style ELO ranking** for gradual skill progression
+- Start from your level and climb steadily
 
-   ```js
-   import { Slot } from "@radix-ui/react-slot";
-   ```
+### 🤖 AI-Powered Marathons
+Ask our AI to create custom problem marathon lists for you:
+- *"Give me 15 DP + string problems over 1500 ELO"*
+- *"Create a marathon of graph problems between 1300-1600 ELO"*
+- Personalized learning paths based on your needs
 
-   This ensures compatibility with the dependencies installed in your project.
+### 🍎 Smart Problem Rating System
+Rate problems you've solved into 4 categories:
+- **🍎 Apple** - Easy, well understood
+- **🍏 Green Apple** - Good challenge, solid grasp
+- **🍋 Lemon** - Challenging, needs review
+- **🥦 Broccoli** - Incomprehensible, needs more work
 
-   > If you still see errors about missing packages, install them manually as needed.
+### 🔄 Spaced Repetition
+Lemon and broccoli problems are automatically sent into a spaced repetition list:
+- You'll be notified to solve them again in a few days
+- This repeats until you graduate them (rate them apple or green apple)
+- Ensures long-term retention and mastery
 
-## 📋 Prerequisites
+## 🔮 Future Plans
 
-Before you begin, ensure you have the following installed:
+### 🧩 Browser Extension (Coming Soon)
+- **Auto-detection**: Know if you've really solved the problem
+- **Mistake analysis**: Identify wrong pitfalls you fell into
+- **Smart hints**: Give a little nudge when you're stuck
+- **Progress tracking**: Seamless integration with your solving process
 
-- [Node.js](https://nodejs.org/) (version 18 or higher)
-- [npm](https://www.npmjs.com/) (comes with Node.js)
+### 🏗️ Built-in Compiler
+- **Integrated environment**: Solve problems directly on the platform
+- **Real-time feedback**: Immediate validation of your solutions
+- **Learning analytics**: Track your solving patterns and improvements
 
-## 🛠️ Installation & Setup
+## 🛠️ Tech Stack
 
-### 1. Clone the Repository
+- **Frontend**: React + TypeScript + Vite
+- **Styling**: TailwindCSS + Radix UI
+- **Backend**: Supabase (Auth + Database)
+- **AI**: OpenAI API for marathon generation
+- **Deployment**: Vercel
 
-```bash
-git clone https://github.com/likang/figma-make-local-runner
-cd figma-make-local-runner
-```
+## 🚀 Getting Started
 
-### 2. Download Code from Figma Make
+1. Visit [https://teelcode.vercel.app/](https://teelcode.vercel.app/)
+2. Sign up with your email
+3. Start solving problems at your ELO level
+4. Rate problems as you solve them
+5. Use the AI marathon feature for targeted practice
+6. Review lemon/broccoli problems in the spaced repetition system
 
-1. Export your code from Figma Make
-2. Decompress the downloaded files
-3. Copy all the files and folders into the `src` directory of this project
+## 🎯 The Learning Philosophy
 
-**Important**: Make sure to replace or merge with the existing files in the `src` folder. The current `src` folder contains a demo application that you should replace with your Figma Make code.
+**Gradual progression over brute force.** Instead of jumping into hard problems that demotivate you, start where you are and build up systematically. Your ELO will naturally reflect your true skill level, and you'll see measurable improvement over time.
 
-### 3. Install Dependencies
+---
 
-```bash
-npm install
-```
-
-### 4. Start Development Server
-
-```bash
-npm run dev
-```
-
-The application will be available at `http://localhost:5173` (or another port if 5173 is occupied).
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+**Built with ❤️ for the LeetCode community**
