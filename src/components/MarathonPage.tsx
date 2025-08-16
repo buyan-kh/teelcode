@@ -70,45 +70,7 @@ function formatCompletionTime(ms: number): string {
   }
 }
 
-function calculateNewElo(
-  userElo: number,
-  problemElo: number,
-  solved: boolean
-): number {
-  /**
-   * Calculates a user's new Elo rating after attempting a problem.
-   * Uses a dynamic K-factor that scales based on problem difficulty.
-   */
-
-  // If the user didn't solve the problem, their Elo does not change.
-  if (!solved) {
-    return Math.round(userElo);
-  }
-
-  // --- 1. Dynamic K-Factor ---
-  // The K-factor determines the maximum possible change in Elo.
-  // We make it dynamic so that higher-rated problems have more weight.
-  let K: number;
-  if (problemElo < 2000) {
-    K = 60;
-  } else if (problemElo < 2600) {
-    K = 100;
-  } else {
-    K = 300;
-  }
-
-  // --- 2. Calculate Expected Outcome ---
-  // This is the probability of the user solving the problem, based on the
-  // difference in ratings.
-  const expectedProb = 1 / (1 + Math.pow(10, (problemElo - userElo) / 400));
-
-  // --- 3. Calculate New Elo ---
-  // The core Elo formula. It updates the user's rating based on the
-  // difference between the actual outcome (1 for a win) and the expected outcome.
-  const newElo = userElo + K * (1 - expectedProb);
-
-  return Math.round(newElo);
-}
+// ELO calculation removed - no longer tracking user ELO
 
 export function MarathonPage() {
   const [prompt, setPrompt] = useState("");
@@ -142,8 +104,7 @@ export function MarathonPage() {
     Record<number, string | null>
   >({});
 
-  // User ELO system
-  const [userElo, setUserElo] = useState<number>(1000);
+  // Solved problems tracking (no ELO calculation)
   const [solvedProblems, setSolvedProblems] = useState<Set<number>>(new Set());
 
   // Load existing ratings and ELO data from global storage on mount and listen for changes
@@ -160,30 +121,23 @@ export function MarathonPage() {
       }
     };
 
-    const loadEloData = () => {
+    const loadSolvedData = () => {
       try {
-        const ELO_KEY = "userElo";
         const SOLVED_KEY = "solvedProblems";
-
-        const savedElo = localStorage.getItem(ELO_KEY);
         const savedSolved = localStorage.getItem(SOLVED_KEY);
-
-        if (savedElo) {
-          setUserElo(parseInt(savedElo, 10));
-        }
 
         if (savedSolved) {
           const solvedArray = JSON.parse(savedSolved);
           setSolvedProblems(new Set(solvedArray));
         }
       } catch (error) {
-        console.warn("Failed to load ELO data:", error);
+        console.warn("Failed to load solved problems data:", error);
       }
     };
 
     // Load initial data
     loadRatings();
-    loadEloData();
+    loadSolvedData();
 
     // Listen for rating changes from other components (like homepage)
     const handleRatingChange = () => loadRatings();
@@ -959,7 +913,6 @@ export function MarathonPage() {
   const handleProblemRatingChange = (rating: string | null) => {
     if (selectedProblem) {
       const problemId = selectedProblem.id;
-      const problemElo = selectedProblem.eloScore;
       const previousRating = problemRatings[problemId];
 
       // Determine if problem was previously solved and if it's solved now
@@ -969,61 +922,34 @@ export function MarathonPage() {
       // Update local state
       setProblemRatings((prev) => ({ ...prev, [problemId]: rating }));
 
-      // Update ELO based on solve state change
+      // Update solved tracking based on solve state change
       if (!wasSolved && isSolvedNow) {
-        // Problem newly solved - gain ELO
-        const newElo = calculateNewElo(userElo, problemElo, true);
-        setUserElo(newElo);
+        // Problem newly solved - just track it
         setSolvedProblems((prev) => new Set([...prev, problemId]));
 
-        // Persist ELO data
-        localStorage.setItem("userElo", newElo.toString());
+        // Persist solved problems
         const updatedSolvedArray = [...solvedProblems, problemId];
         localStorage.setItem(
           "solvedProblems",
           JSON.stringify(updatedSolvedArray)
         );
 
-        // Notify other components about ELO change (defer to avoid setState during render)
-        setTimeout(
-          () => window.dispatchEvent(new Event("user-elo-changed")),
-          0
-        );
-
-        console.log(
-          `🎯 Problem ${problemId} solved! ELO: ${userElo} → ${newElo} (+${
-            newElo - userElo
-          })`
-        );
+        console.log(`✅ Marathon: Problem ${problemId} solved!`);
       } else if (wasSolved && !isSolvedNow) {
-        // Problem unrated/unsolved - reverse the ELO gain
-        // Calculate what the gain was and subtract it
-        const originalGain =
-          calculateNewElo(userElo, problemElo, true) - userElo;
-        const newElo = Math.max(1000, userElo - originalGain); // Don't go below 1000
-        setUserElo(newElo);
+        // Problem unrated/unsolved - remove from solved
         setSolvedProblems((prev) => {
           const updated = new Set(prev);
           updated.delete(problemId);
           return updated;
         });
 
-        // Persist ELO data
-        localStorage.setItem("userElo", newElo.toString());
+        // Persist solved problems
         const updatedSolved = [...solvedProblems].filter(
           (id) => id !== problemId
         );
         localStorage.setItem("solvedProblems", JSON.stringify(updatedSolved));
 
-        // Notify other components about ELO change (defer to avoid setState during render)
-        setTimeout(
-          () => window.dispatchEvent(new Event("user-elo-changed")),
-          0
-        );
-
-        console.log(
-          `❌ Problem ${problemId} unrated! ELO: ${userElo} → ${newElo} (-${originalGain})`
-        );
+        console.log(`❌ Marathon: Problem ${problemId} unrated!`);
       }
 
       // Sync with global ratings storage (same as homepage)

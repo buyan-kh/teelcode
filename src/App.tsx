@@ -7,6 +7,7 @@ import { RightSidebar } from "./components/RightSidebar";
 import { ProfilePage } from "./components/ProfilePage";
 import { RecallPage } from "./components/RecallPage";
 import { MarathonPage } from "./components/MarathonPage";
+// import { DataMigrationBanner } from "./components/DataMigrationBanner"; // Not needed with auto-sync
 // import { Card, CardContent } from "./components/ui/card";
 
 export type AppRoute =
@@ -93,7 +94,7 @@ export default function App() {
   return (
     <div className="h-screen flex">
       {/* Left sidebar */}
-      <div className="w-[260px] flex-shrink-0 overflow-y-auto sticky top-0 h-screen py-4 px-0">
+      <div className="w-[260px] flex-shrink-0 overflow-y-auto sticky top-0 h-screen py-8 px-3">
         <Sidebar
           active={
             (route === "recall-lemon" || route === "recall-broccoli"
@@ -114,7 +115,7 @@ export default function App() {
       </main>
 
       {/* Right sidebar */}
-      <div className="w-[320px] flex-shrink-0 overflow-y-auto sticky top-0 h-screen py-6 px-4">
+      <div className="w-[320px] flex-shrink-0 overflow-y-auto sticky top-0 h-screen py-6">
         <RightSidebar />
       </div>
     </div>

@@ -21,35 +21,7 @@ import {
 import { LeetCodeProblem, leetcodeProblems } from "../data/leetcode-problems";
 import { ProblemModal } from "./ProblemModal";
 
-// ELO calculation function (same as MarathonPage)
-function calculateNewElo(
-  userElo: number,
-  problemElo: number,
-  solved: boolean
-): number {
-  // If the user didn't solve the problem, their Elo does not change.
-  if (!solved) {
-    return Math.round(userElo);
-  }
-
-  // Dynamic K-Factor
-  let K: number;
-  if (problemElo < 2000) {
-    K = 60;
-  } else if (problemElo < 2600) {
-    K = 100;
-  } else {
-    K = 300;
-  }
-
-  // Calculate Expected Outcome
-  const expectedProb = 1 / (1 + Math.pow(10, (problemElo - userElo) / 400));
-
-  // Calculate New Elo
-  const newElo = userElo + K * (1 - expectedProb);
-
-  return Math.round(newElo);
-}
+// ELO calculation removed - no longer tracking user ELO
 
 const STAR_KEY = "starredProblems";
 function readStarred(): Record<number, boolean> {
@@ -147,26 +119,20 @@ export function ProblemsList({
     null
   );
 
-  // ELO system state
-  const [userElo, setUserElo] = useState<number>(1000);
+  // Solved problems tracking (no ELO calculation)
   const [solvedProblems, setSolvedProblems] = useState<Set<number>>(new Set());
 
-  // Load ELO data from storage
+  // Load solved problems from storage
   useEffect(() => {
     try {
-      const savedElo = localStorage.getItem("userElo");
       const savedSolved = localStorage.getItem("solvedProblems");
-
-      if (savedElo) {
-        setUserElo(parseInt(savedElo, 10));
-      }
 
       if (savedSolved) {
         const solvedArray = JSON.parse(savedSolved);
         setSolvedProblems(new Set(solvedArray));
       }
     } catch (error) {
-      console.warn("Failed to load ELO data:", error);
+      console.error("Error loading solved problems:", error);
     }
   }, []);
 
@@ -332,7 +298,6 @@ export function ProblemsList({
 
       // ELO calculation based on solve state change
       const problemId = selectedProblem.id;
-      const problemElo = selectedProblem.eloScore;
       const previousRating = prev[selectedProblem.id]?.rating || null;
 
       // Determine if problem was previously solved and if it's solved now
@@ -342,59 +307,32 @@ export function ProblemsList({
       const isSolvedNow = rating !== null && rating !== "exhausting";
 
       if (!wasSolved && isSolvedNow) {
-        // Problem newly solved - gain ELO
-        const newElo = calculateNewElo(userElo, problemElo, true);
-        setUserElo(newElo);
+        // Problem newly solved - just track it
         setSolvedProblems((prev) => new Set([...prev, problemId]));
 
-        // Persist ELO data
-        localStorage.setItem("userElo", newElo.toString());
+        // Persist solved problems
         const updatedSolvedArray = [...solvedProblems, problemId];
         localStorage.setItem(
           "solvedProblems",
           JSON.stringify(updatedSolvedArray)
         );
 
-        // Notify other components about ELO change (defer to avoid setState during render)
-        setTimeout(
-          () => window.dispatchEvent(new Event("user-elo-changed")),
-          0
-        );
-
-        console.log(
-          `🎯 Problem ${problemId} solved! ELO: ${userElo} → ${newElo} (+${
-            newElo - userElo
-          })`
-        );
+        console.log(`✅ Problem ${problemId} solved!`);
       } else if (wasSolved && !isSolvedNow) {
-        // Problem unrated/unsolved - reverse the ELO gain
-        // Calculate what the gain was and subtract it
-        const originalGain =
-          calculateNewElo(userElo, problemElo, true) - userElo;
-        const newElo = Math.max(1000, userElo - originalGain); // Don't go below 1000
-        setUserElo(newElo);
+        // Problem unrated/unsolved - remove from solved
         setSolvedProblems((prev) => {
           const updated = new Set(prev);
           updated.delete(problemId);
           return updated;
         });
 
-        // Persist ELO data
-        localStorage.setItem("userElo", newElo.toString());
+        // Persist solved problems
         const updatedSolved = [...solvedProblems].filter(
           (id) => id !== problemId
         );
         localStorage.setItem("solvedProblems", JSON.stringify(updatedSolved));
 
-        // Notify other components about ELO change (defer to avoid setState during render)
-        setTimeout(
-          () => window.dispatchEvent(new Event("user-elo-changed")),
-          0
-        );
-
-        console.log(
-          `❌ Problem ${problemId} unrated! ELO: ${userElo} → ${newElo} (-${originalGain})`
-        );
+        console.log(`❌ Problem ${problemId} unrated!`);
       }
 
       // Update recalls and graduation tracking based on transitions
@@ -565,9 +503,9 @@ export function ProblemsList({
               );
               setCurrentPage(1);
             }}
-            className="h-9 px-5 rounded-full bg-[#F5F3FF] border-0 text-xl font-instrument-condensed"
+            className="h-9 px-5 rounded-full bg-[#2a5de2] border-0 text-lg font-sf text-white"
           >
-            sort by
+            Sort by
           </Button>
         </div>
       </div>
@@ -586,8 +524,8 @@ export function ProblemsList({
                   className={`cursor-pointer hover:shadow-md transition-shadow bg-white/80 backdrop-blur-sm ${
                     userRating
                       ? problemData[problem.id]?.rating === "exhausting"
-                        ? "bg-red-50 dark:bg-transparent dark:border-red-500"
-                        : "bg-green-50 dark:bg-transparent dark:border-green-500"
+                        ? "bg-transparent border-red-500"
+                        : "bg-transparent border-green-500"
                       : ""
                   }`}
                   onClick={() => handleProblemClick(problem)}

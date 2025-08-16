@@ -49,7 +49,7 @@ export function RightSidebar() {
     Record<number, boolean>
   >({});
   const [, setNowTs] = useState<number>(() => Date.now());
-  const [userElo, setUserElo] = useState<number>(1000);
+  // ELO tracking removed
 
   // Load on mount and subscribe to changes (same-tab and cross-tab)
   useEffect(() => {
@@ -68,21 +68,7 @@ export function RightSidebar() {
       } catch {
         setGraduatedSet({});
       }
-      // Load user ELO
-      try {
-        const savedElo = localStorage.getItem("userElo");
-        if (savedElo) {
-          const eloValue = parseInt(savedElo, 10);
-          console.log("🔄 RightSidebar loading ELO:", eloValue);
-          setUserElo(eloValue);
-        } else {
-          console.log("🔄 RightSidebar: No saved ELO, using default 1000");
-          setUserElo(1000);
-        }
-      } catch (error) {
-        console.warn("🔄 RightSidebar: Error loading ELO:", error);
-        setUserElo(1000);
-      }
+      // ELO loading removed
     };
 
     loadAll();
@@ -92,18 +78,13 @@ export function RightSidebar() {
       loadAll();
     };
     const onRecallsChange = () => loadAll();
-    const onEloChange = () => {
-      console.log("🔄 RightSidebar: ELO changed event received");
-      loadAll();
-    };
+    // ELO change listener removed
     window.addEventListener("problem-ratings-changed", onRatingsChange);
     window.addEventListener("problem-recalls-changed", onRecallsChange);
-    window.addEventListener("user-elo-changed", onEloChange);
     window.addEventListener("storage", onRatingsChange);
     return () => {
       window.removeEventListener("problem-ratings-changed", onRatingsChange);
       window.removeEventListener("problem-recalls-changed", onRecallsChange);
-      window.removeEventListener("user-elo-changed", onEloChange);
       window.removeEventListener("storage", onRatingsChange);
     };
   }, []);
@@ -233,7 +214,9 @@ export function RightSidebar() {
 
         <Card className="bg-white border border-white/20 shadow-sm rounded-2xl">
           <CardContent className="pt-6">
-            <h3 className="text-sm font-medium mb-2">Current solved</h3>
+            <h3 className="text-sm font-bold text-blue-600 mb-2">
+              Current solved
+            </h3>
             <p className="text-lg font-semibold">
               {solvedCount} / {totalProblems}
             </p>
@@ -245,15 +228,10 @@ export function RightSidebar() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-white border border-white/20 shadow-sm rounded-2xl">
-          <CardContent className="pt-6">
-            <h3 className="text-sm font-medium mb-2">Current ELO</h3>
-            <p className="text-lg font-semibold">{userElo}</p>
-          </CardContent>
-        </Card>
+        {/* ELO display removed */}
 
         {/* Rating breakdown */}
-        <Card className="bg-white border border-white/20 shadow-sm rounded-2xl">
+        <Card className="bg-blue-600/10 border border-white/20 shadow-sm rounded-2xl">
           <CardContent className="pt-6">
             <h3 className="text-sm font-medium mb-4">Ratings</h3>
             <div className="space-y-2 text-sm">

@@ -85,7 +85,7 @@
   }
   /* Apply light background only when NOT in dark mode */
   html:not(.dark) body {
-    background: #f0f0f0;
+    background: #e8e8e8;
   }
 }
 

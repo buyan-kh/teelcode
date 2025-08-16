@@ -26,18 +26,17 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
   ];
 
   return (
-    <aside className="h-full m-0 p-4 rounded-r-[2rem] bg-white shadow-sm border-r flex flex-col">
+    <aside className="h-full m-0 p-4 rounded-[2rem] bg-white shadow-sm border-r flex flex-col">
       {/* Brand inside sidebar */}
       <div className="px-4 mb-[1.2rem]">
         <div className="flex items-center gap-3 rounded-xl border bg-white/80 backdrop-blur-sm px-4 py-3 shadow-sm">
           <img
-            src="https://ui-avatars.com/api/?name=T&background=dbeafe&color=111"
+            src="https://i.ibb.co/Hf1xxfY7/teelcode.png"
             alt="teelcode"
             className="w-10 h-10 rounded-full"
           />
-          <div className="leading-tight">
-            <p className="text-sm font-semibold">teelcode</p>
-            <p className="text-xs text-transparent select-none">.</p>
+          <div>
+            <p className="text-m font-bold font-sf">TeelCode</p>
           </div>
         </div>
       </div>
@@ -53,13 +52,14 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
               type="button"
               onClick={() => onNavigate(key)}
               aria-current={active === key ? "page" : undefined}
-              className="block w-full text-left font-instrument-condensed text-[1.2rem] leading-none"
+              className="block w-full text-left font-sf text-[1.2rem] leading-none text-color"
             >
               <span
                 className="px-[1.2rem] py-[0.6rem] rounded-2xl inline-block w-full"
                 style={{
                   backgroundColor:
-                    active === key ? ("#AA92FF33" as any) : "transparent",
+                    active === key ? ("#2a5de2" as any) : "transparent",
+                  color: active === key ? ("#ffffff" as any) : "#000000",
                 }}
               >
                 <span className="condense-90 inline-block">{label}</span>
@@ -81,13 +81,13 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
               type="button"
               onClick={() => onNavigate(key)}
               aria-current={active === key ? "page" : undefined}
-              className="block w-full text-left font-instrument-condensed text-[1.2rem] leading-none"
+              className="block w-full text-left font-sf text-[1.2rem] leading-none"
             >
               <span
                 className="px-[1.2rem] py-[0.6rem] rounded-2xl inline-block w-full"
                 style={{
                   backgroundColor:
-                    active === key ? ("#AA92FF33" as any) : "transparent",
+                    active === key ? ("#2a5de2" as any) : "transparent",
                 }}
               >
                 <span className="condense-90 inline-block">{key}</span>
