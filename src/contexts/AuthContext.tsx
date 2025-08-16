@@ -59,32 +59,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  // Helper to restore auth state from localStorage
-  const restoreAuthFromCache = (): User | null => {
-    try {
-      const cached = localStorage.getItem("supabase_auth_cache");
-      if (!cached) return null;
 
-      const { user, expires_at, cached_at } = JSON.parse(cached);
-
-      // Check if cached auth is less than 1 hour old and not expired
-      const oneHour = 60 * 60 * 1000;
-      const isRecentCache = Date.now() - cached_at < oneHour;
-      const isNotExpired = expires_at * 1000 > Date.now();
-
-      if (isRecentCache && isNotExpired) {
-        console.log("🎯 Restored auth from cache - user is still authorized");
-        return user;
-      } else {
-        console.log("🕐 Cached auth expired, clearing cache");
-        localStorage.removeItem("supabase_auth_cache");
-        return null;
-      }
-    } catch (error) {
-      console.error("❌ Error restoring auth from cache:", error);
-      return null;
-    }
-  };
 
   useEffect(() => {
     if (initialized) {

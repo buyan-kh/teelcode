@@ -35,7 +35,7 @@ export function RecallPage() {
     };
   }, []);
 
-  const now = Date.now();
+
   const toItems = (type: RecallType) => {
     const items = Object.entries(recalls)
       .filter(([, e]) => e.type === type)

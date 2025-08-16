@@ -50,7 +50,7 @@ function getRouteFromHash(): AppRoute {
 
 export default function App() {
   const [route, setRoute] = useState<AppRoute>(() => getRouteFromHash());
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { isLoading: dataLoading } = useData();
 
   useEffect(() => {

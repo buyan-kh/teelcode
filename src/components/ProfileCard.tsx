@@ -30,7 +30,7 @@ function readProfile(): UserProfile {
 export function ProfileCard() {
   const [profile, setProfile] = useState<UserProfile>(() => readProfile());
   const [showLogout, setShowLogout] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     const onChange = () => setProfile(readProfile());

@@ -10,9 +10,7 @@ type RatingValue =
   | "challenging"
   | "incomprehensible"
   | "exhausting";
-type RatingMap = Record<number, RatingValue>;
 
-const RECALL_KEY = "problemRecalls";
 const GRADUATED_SET_KEY = "recallGraduatedIds";
 
 export function RightSidebar() {
