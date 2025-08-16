@@ -595,15 +595,17 @@ export async function migrateLegacyData(): Promise<boolean> {
 
 // ===== CHAT LIMIT OPERATIONS =====
 
-export async function checkAndUpdateChatLimit(userId: string): Promise<{ allowed: boolean; remaining: number }> {
+export async function checkAndUpdateChatLimit(
+  userId: string
+): Promise<{ allowed: boolean; remaining: number }> {
   try {
     console.log(`🔍 Checking chat limit for user: ${userId}`);
 
     // Get current profile with chat limit info
     const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('daily_chat_count, last_chat_reset_date')
-      .eq('id', userId)
+      .from("profiles")
+      .select("daily_chat_count, last_chat_reset_date")
+      .eq("id", userId)
       .single();
 
     if (error) {
@@ -611,19 +613,19 @@ export async function checkAndUpdateChatLimit(userId: string): Promise<{ allowed
       return { allowed: false, remaining: 0 };
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    
+    const today = new Date().toISOString().split("T")[0];
+
     // Reset counter if it's a new day
     if (profile.last_chat_reset_date !== today) {
       console.log(`🔄 Resetting chat count for new day: ${today}`);
-      
+
       const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ 
-          daily_chat_count: 1, 
-          last_chat_reset_date: today 
+        .from("profiles")
+        .update({
+          daily_chat_count: 1,
+          last_chat_reset_date: today,
         })
-        .eq('id', userId);
+        .eq("id", userId);
 
       if (updateError) {
         console.error("❌ Error resetting chat count:", updateError);
@@ -632,18 +634,18 @@ export async function checkAndUpdateChatLimit(userId: string): Promise<{ allowed
 
       return { allowed: true, remaining: 2 }; // 3 total - 1 used = 2 remaining
     }
-    
+
     // Check if user has reached limit (3 per day)
     if (profile.daily_chat_count >= 3) {
       console.log(`❌ Chat limit reached for user: ${userId}`);
       return { allowed: false, remaining: 0 };
     }
-    
+
     // Increment counter
     const { error: incrementError } = await supabase
-      .from('profiles')
+      .from("profiles")
       .update({ daily_chat_count: profile.daily_chat_count + 1 })
-      .eq('id', userId);
+      .eq("id", userId);
 
     if (incrementError) {
       console.error("❌ Error incrementing chat count:", incrementError);
@@ -652,7 +654,7 @@ export async function checkAndUpdateChatLimit(userId: string): Promise<{ allowed
 
     const remaining = 3 - (profile.daily_chat_count + 1);
     console.log(`✅ Chat allowed. Remaining: ${remaining}`);
-    
+
     return { allowed: true, remaining };
   } catch (error) {
     console.error("❌ Error in checkAndUpdateChatLimit:", error);
@@ -660,30 +662,41 @@ export async function checkAndUpdateChatLimit(userId: string): Promise<{ allowed
   }
 }
 
-export async function getChatLimitInfo(userId: string): Promise<{ used: number; remaining: number; resetDate: string }> {
+export async function getChatLimitInfo(
+  userId: string
+): Promise<{ used: number; remaining: number; resetDate: string }> {
   try {
     const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('daily_chat_count, last_chat_reset_date')
-      .eq('id', userId)
+      .from("profiles")
+      .select("daily_chat_count, last_chat_reset_date")
+      .eq("id", userId)
       .single();
 
     if (error) {
       console.error("❌ Error fetching chat limit info:", error);
-      return { used: 0, remaining: 3, resetDate: new Date().toISOString().split('T')[0] };
+      return {
+        used: 0,
+        remaining: 3,
+        resetDate: new Date().toISOString().split("T")[0],
+      };
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    const used = profile.last_chat_reset_date === today ? profile.daily_chat_count : 0;
+    const today = new Date().toISOString().split("T")[0];
+    const used =
+      profile.last_chat_reset_date === today ? profile.daily_chat_count : 0;
     const remaining = Math.max(0, 3 - used);
 
-    return { 
-      used, 
-      remaining, 
-      resetDate: profile.last_chat_reset_date 
+    return {
+      used,
+      remaining,
+      resetDate: profile.last_chat_reset_date,
     };
   } catch (error) {
     console.error("❌ Error in getChatLimitInfo:", error);
-    return { used: 0, remaining: 3, resetDate: new Date().toISOString().split('T')[0] };
+    return {
+      used: 0,
+      remaining: 3,
+      resetDate: new Date().toISOString().split("T")[0],
+    };
   }
 }

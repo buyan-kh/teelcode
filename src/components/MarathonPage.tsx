@@ -10,7 +10,10 @@ import {
 import { ProblemModal } from "./ProblemModal";
 import { Plus } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { checkAndUpdateChatLimit, getChatLimitInfo } from "../lib/supabaseService";
+import {
+  checkAndUpdateChatLimit,
+  getChatLimitInfo,
+} from "../lib/supabaseService";
 
 type Preference = "lemon" | "broccoli" | "surprise" | "text";
 
@@ -91,7 +94,15 @@ export function MarathonPage() {
   const [sessionId, setSessionId] = useState<string>("");
   const [started, setStarted] = useState(false);
   const [startReady, setStartReady] = useState(false);
-  const [chatLimitInfo, setChatLimitInfo] = useState<{ used: number; remaining: number; resetDate: string }>({ used: 0, remaining: 3, resetDate: new Date().toISOString().split('T')[0] });
+  const [chatLimitInfo, setChatLimitInfo] = useState<{
+    used: number;
+    remaining: number;
+    resetDate: string;
+  }>({
+    used: 0,
+    remaining: 3,
+    resetDate: new Date().toISOString().split("T")[0],
+  });
 
   // Chat history state
   const [chatSessions, setChatSessions] = useState<Record<string, ChatSession>>(
@@ -350,7 +361,9 @@ export function MarathonPage() {
     // Check chat limit before proceeding
     const { allowed, remaining } = await checkAndUpdateChatLimit(user.id);
     if (!allowed) {
-      alert("You've reached your daily limit of 3 AI marathon requests. Please try again tomorrow!");
+      alert(
+        "You've reached your daily limit of 3 AI marathon requests. Please try again tomorrow!"
+      );
       return;
     }
 
@@ -358,7 +371,7 @@ export function MarathonPage() {
     setPreference(pref);
 
     // Update chat limit info
-    setChatLimitInfo(prev => ({ ...prev, remaining }));
+    setChatLimitInfo((prev) => ({ ...prev, remaining }));
 
     // Ask OpenAI to convert the conversation context + preference into a filter plan
     const plan = await analyzeMarathonPrompt(conversationText, pref);
@@ -525,7 +538,9 @@ export function MarathonPage() {
     // Check chat limit before proceeding
     const { allowed, remaining } = await checkAndUpdateChatLimit(user.id);
     if (!allowed) {
-      alert("You've reached your daily limit of 3 AI marathon requests. Please try again tomorrow!");
+      alert(
+        "You've reached your daily limit of 3 AI marathon requests. Please try again tomorrow!"
+      );
       return;
     }
 
@@ -533,7 +548,7 @@ export function MarathonPage() {
     setPreference(pref);
 
     // Update chat limit info
-    setChatLimitInfo(prev => ({ ...prev, remaining }));
+    setChatLimitInfo((prev) => ({ ...prev, remaining }));
 
     // Ask OpenAI to convert the prompt + preference into a filter plan
     const plan = await analyzeMarathonPrompt(prompt, pref);
@@ -1329,9 +1344,14 @@ export function MarathonPage() {
               {/* Chat limit info */}
               <div className="w-full max-w-3xl px-4 pb-2">
                 <div className="text-sm text-gray-600 text-center">
-                  AI requests remaining today: <span className="font-semibold">{chatLimitInfo.remaining}</span>
+                  AI requests remaining today:{" "}
+                  <span className="font-semibold">
+                    {chatLimitInfo.remaining}
+                  </span>
                   {chatLimitInfo.remaining === 0 && (
-                    <span className="text-red-500 ml-2">• Limit reached, try again tomorrow!</span>
+                    <span className="text-red-500 ml-2">
+                      • Limit reached, try again tomorrow!
+                    </span>
                   )}
                 </div>
               </div>
