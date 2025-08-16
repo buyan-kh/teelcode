@@ -35,65 +35,155 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  console.log("🔥 AuthProvider rendering, loading:", true);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
+
+  // Helper to cache auth state in localStorage
+  const cacheAuthState = (session: Session | null) => {
+    if (session?.user) {
+      localStorage.setItem(
+        "supabase_auth_cache",
+        JSON.stringify({
+          user: session.user,
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_at: session.expires_at,
+          cached_at: Date.now(),
+        })
+      );
+    } else {
+      localStorage.removeItem("supabase_auth_cache");
+    }
+  };
+
+  // Helper to restore auth state from localStorage
+  const restoreAuthFromCache = (): User | null => {
+    try {
+      const cached = localStorage.getItem("supabase_auth_cache");
+      if (!cached) return null;
+
+      const { user, expires_at, cached_at } = JSON.parse(cached);
+
+      // Check if cached auth is less than 1 hour old and not expired
+      const oneHour = 60 * 60 * 1000;
+      const isRecentCache = Date.now() - cached_at < oneHour;
+      const isNotExpired = expires_at * 1000 > Date.now();
+
+      if (isRecentCache && isNotExpired) {
+        console.log("🎯 Restored auth from cache - user is still authorized");
+        return user;
+      } else {
+        console.log("🕐 Cached auth expired, clearing cache");
+        localStorage.removeItem("supabase_auth_cache");
+        return null;
+      }
+    } catch (error) {
+      console.error("❌ Error restoring auth from cache:", error);
+      return null;
+    }
+  };
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    if (initialized) {
+      console.log("🔥 Already initialized, skipping...");
+      return;
+    }
 
-      // Ensure profile exists for existing session
-      if (session?.user) {
-        console.log("👤 Existing session found, ensuring profile exists...");
-        try {
-          await ensureUserProfile();
-          console.log("✅ User profile ensured for existing session");
-        } catch (error) {
-          console.error(
-            "❌ Error ensuring user profile for existing session:",
-            error
-          );
+    let isMounted = true; // Prevent state updates if unmounted
+    console.log("🔥 Starting initialization...");
+
+    const getInitialSession = async () => {
+      if (!isMounted) return;
+
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        const session = data.session;
+
+        if (session && isMounted) {
+          console.log("✅ Session from Supabase:", session.user.email);
+          setSession(session);
+          setUser(session.user);
+          cacheAuthState(session); // ✅ Only cache here
+          setLoading(false);
+          setInitialized(true);
+          return;
         }
+      } catch (error) {
+        console.error("❌ Failed to get session", error);
       }
 
-      setLoading(false);
-    });
+      // Try restore from cache
+      try {
+        const cached = localStorage.getItem("supabase_auth_cache");
+        if (!cached || !isMounted) return;
 
-    // Listen for auth changes
+        const parsed = JSON.parse(cached);
+        const { access_token, refresh_token, expires_at } = parsed;
+
+        if (expires_at * 1000 < Date.now()) {
+          localStorage.removeItem("supabase_auth_cache");
+          setLoading(false);
+          return;
+        }
+
+        const { data: restoreData, error: restoreError } =
+          await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+          });
+
+        if (restoreError) throw restoreError;
+
+        const restoredSession = restoreData.session;
+        if (restoredSession && isMounted) {
+          console.log(
+            "✅ Restored session from cache:",
+            restoredSession.user.email
+          );
+          setSession(restoredSession);
+          setUser(restoredSession.user);
+          cacheAuthState(restoredSession); // ✅ Cache after restore
+          setLoading(false);
+          setInitialized(true);
+        }
+      } catch (err) {
+        console.error("❌ Failed to restore session", err);
+        localStorage.removeItem("supabase_auth_cache");
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+          setInitialized(true);
+        }
+      }
+    };
+
+    getInitialSession();
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event, session?.user?.email);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("🔐 Auth state changed:", event, session?.user?.email);
 
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-
-      // Handle sign in - ensure user profile exists
-      if (event === "SIGNED_IN" && session?.user) {
-        console.log("👤 User signed in, ensuring profile exists...");
-        try {
-          await ensureUserProfile();
-          console.log("✅ User profile ensured");
-        } catch (error) {
-          console.error("❌ Error ensuring user profile:", error);
-        }
+      // Don't update state during initialization
+      if (isMounted && initialized) {
+        setSession(session);
+        setUser(session?.user ?? null);
       }
 
-      // Handle sign out - keep localStorage data since it's our primary storage
-      if (event === "SIGNED_OUT") {
-        // Note: We DON'T clear localStorage anymore since it's our primary storage
-        // and we want data to persist when users log back in
-        console.log(
-          "User signed out, but keeping localStorage data for next login"
-        );
+      if (event === "SIGNED_IN" && session?.user) {
+        ensureUserProfile().catch(console.error);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (
@@ -156,6 +246,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
+
+      // Clear cached session on sign out
+      localStorage.removeItem("supabase_auth_cache");
 
       if (error) {
         console.error("Sign out error:", error);

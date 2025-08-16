@@ -192,20 +192,27 @@ export async function getUserProblemRatings(): Promise<Record<number, string>> {
 export async function updateProblemRating(
   problemId: number,
   rating: string | null,
-  notes?: string
+  notes?: string,
+  userId?: string // Accept userId as parameter
 ): Promise<boolean> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return false;
+    console.log(
+      `🔥 updateProblemRating called: problemId=${problemId}, rating="${rating}" (type: ${typeof rating}), notes=${notes}, userId=${userId}`
+    );
+
+    if (!userId) {
+      console.log(`🔥 No userId provided - returning false`);
+      return false;
+    }
+
+    console.log(`🔥 Using provided userId: ${userId}`);
 
     if (rating === null) {
       // Delete the rating
       const { error } = await supabase
         .from("problem_ratings")
         .delete()
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("problem_id", problemId);
 
       if (error) {
@@ -215,30 +222,31 @@ export async function updateProblemRating(
     } else {
       // Upsert the rating
       console.log(
-        `🔄 Inserting rating: user=${user.id}, problem=${problemId}, rating=${rating}`
+        `🔥 About to upsert rating: user=${userId}, problem=${problemId}, rating=${rating}`
       );
-      const { data, error } = await supabase.from("problem_ratings").upsert(
+
+      console.log(`🔥 Using correct upsert syntax with onConflict...`);
+
+      // Correct upsert without .select() and with onConflict
+      const { error } = await supabase.from("problem_ratings").upsert(
         {
-          user_id: user.id,
+          user_id: userId,
           problem_id: problemId,
-          rating: rating as any,
+          rating: rating,
           notes: notes || null,
         },
         {
-          onConflict: "user_id,problem_id",
+          onConflict: "user_id,problem_id", // Critical: tells Supabase how to handle duplicates
         }
       );
 
       if (error) {
-        console.error("❌ Error updating problem rating:", error);
-        console.error("❌ Error details:", JSON.stringify(error, null, 2));
+        console.error("❌ Error upserting problem rating:", error);
+        console.error("❌ Full error:", JSON.stringify(error, null, 2));
         return false;
       }
 
-      console.log(
-        `✅ Successfully inserted rating: problem=${problemId}, rating=${rating}`
-      );
-      console.log(`✅ Supabase response:`, data);
+      console.log(`✅ Successfully upserted rating for problem ${problemId}`);
     }
 
     return true;

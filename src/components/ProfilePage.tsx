@@ -98,7 +98,7 @@ export function ProfilePage() {
             <img
               src={
                 avatarPreview ||
-                "https://ui-avatars.com/api/?name=User&background=DDD&color=111"
+                "https://ui-avatars.com/api/?name=&background=DDD&color=111"
               }
               alt="avatar preview"
               className="w-16 h-16 rounded-full object-cover border"

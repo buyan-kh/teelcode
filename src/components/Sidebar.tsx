@@ -88,6 +88,7 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
                 style={{
                   backgroundColor:
                     active === key ? ("#2a5de2" as any) : "transparent",
+                  color: active === key ? ("#ffffff" as any) : "#000000",
                 }}
               >
                 <span className="condense-90 inline-block">{key}</span>

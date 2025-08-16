@@ -65,7 +65,7 @@ export function LoginPage({ onToggleMode }: LoginPageProps) {
             <div className="text-center mb-8">
               <div className="flex items-center justify-center gap-3 mb-4">
                 <img
-                  src="https://ui-avatars.com/api/?background=0D8ABC&color=fff"
+                  src="https://i.ibb.co/Hf1xxfY7/teelcode.png"
                   alt="TeelCode"
                   className="w-12 h-12 rounded-full"
                 />

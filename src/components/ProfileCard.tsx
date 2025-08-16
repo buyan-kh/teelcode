@@ -43,10 +43,10 @@ export function ProfileCard() {
   }, []);
 
   const handleSignOut = async () => {
-    const { error } = await signOut();
-    if (error) {
-      console.error("Sign out error:", error);
-    }
+    console.log("🚪 Forcing logout by reloading page...");
+    // Force logout by clearing everything and reloading
+    localStorage.clear();
+    window.location.reload();
   };
 
   // Use authenticated user email if available, fallback to stored profile

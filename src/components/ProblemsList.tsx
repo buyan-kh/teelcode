@@ -20,75 +20,14 @@ import {
 } from "lucide-react";
 import { LeetCodeProblem, leetcodeProblems } from "../data/leetcode-problems";
 import { ProblemModal } from "./ProblemModal";
+import { useData } from "../contexts/DataContext";
 
 // ELO calculation removed - no longer tracking user ELO
 
-const STAR_KEY = "starredProblems";
-function readStarred(): Record<number, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem(STAR_KEY) || "{}");
-  } catch {
-    return {} as Record<number, boolean>;
-  }
-}
-function writeStarred(map: Record<number, boolean>) {
-  localStorage.setItem(STAR_KEY, JSON.stringify(map));
-}
+// Database-first approach - all data comes from useData hook
+// No more localStorage writes - optimistic updates handle everything!
 
-// Persist ratings so other components (e.g., RightSidebar) can compute progress
-const RATING_KEY = "problemRatings";
-type RatingMap = Record<number, string | null>;
-function readRatings(): RatingMap {
-  try {
-    return JSON.parse(localStorage.getItem(RATING_KEY) || "{}");
-  } catch {
-    return {} as RatingMap;
-  }
-}
-function writeRatings(map: RatingMap) {
-  localStorage.setItem(RATING_KEY, JSON.stringify(map));
-  // Notify listeners in this tab to update derived UI (progress, counts)
-  try {
-    window.dispatchEvent(new Event("problem-ratings-changed"));
-  } catch {}
-}
-
-// Recall tracking: when a problem is rated as lemon/broccoli it appears in recall with a due date
-type RecallType = "challenging" | "incomprehensible";
-interface RecallEntry {
-  type: RecallType;
-  assignedAt: number; // epoch ms when it was last set to recall
-}
-const RECALL_KEY = "problemRecalls";
-function readRecalls(): Record<number, RecallEntry> {
-  try {
-    return JSON.parse(localStorage.getItem(RECALL_KEY) || "{}");
-  } catch {
-    return {} as Record<number, RecallEntry>;
-  }
-}
-function writeRecalls(map: Record<number, RecallEntry>) {
-  localStorage.setItem(RECALL_KEY, JSON.stringify(map));
-  try {
-    window.dispatchEvent(new Event("problem-recalls-changed"));
-  } catch {}
-}
-
-// Graduations: distinct problems that moved from lemon/broccoli to apples (red/green)
-const GRADUATED_SET_KEY = "recallGraduatedIds";
-function readGraduatedSet(): Record<number, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem(GRADUATED_SET_KEY) || "{}");
-  } catch {
-    return {} as Record<number, boolean>;
-  }
-}
-function writeGraduatedSet(map: Record<number, boolean>) {
-  localStorage.setItem(GRADUATED_SET_KEY, JSON.stringify(map));
-  try {
-    window.dispatchEvent(new Event("problem-recalls-changed"));
-  } catch {}
-}
+// Database-first approach - graduations are tracked implicitly through rating transitions
 
 interface ProblemData {
   notes: string;
@@ -105,6 +44,16 @@ export function ProblemsList({
   filterStarredOnly = false,
   filterRecallType,
 }: ProblemsListProps) {
+  // Get data from database-first context (with optimistic updates)
+  const {
+    problemRatings,
+    starredProblems,
+    problemRecalls,
+    updateProblemRating,
+    updateStarredProblem,
+    updateProblemRecall,
+  } = useData();
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [minRating, setMinRating] = useState("");
@@ -119,58 +68,31 @@ export function ProblemsList({
     null
   );
 
-  // Solved problems tracking (no ELO calculation)
-  const [solvedProblems, setSolvedProblems] = useState<Set<number>>(new Set());
+  // Note: Solved problems are tracked via problemRatings (rating !== "exhausting")
 
-  // Load solved problems from storage
+  // Initialize problemData from database data (replaces localStorage reads)
   useEffect(() => {
-    try {
-      const savedSolved = localStorage.getItem("solvedProblems");
+    const next: Record<number, ProblemData> = {};
 
-      if (savedSolved) {
-        const solvedArray = JSON.parse(savedSolved);
-        setSolvedProblems(new Set(solvedArray));
-      }
-    } catch (error) {
-      console.error("Error loading solved problems:", error);
+    // Build problemData from database state
+    const allProblemIds = new Set([
+      ...Object.keys(problemRatings).map(Number),
+      ...Object.keys(starredProblems).map(Number),
+    ]);
+
+    for (const problemId of allProblemIds) {
+      next[problemId] = {
+        notes: "", // Notes aren't implemented in the current data structure
+        rating: problemRatings[problemId] || null,
+        starred: starredProblems[problemId] || false,
+      };
     }
-  }, []);
 
-  // Initialize starred state from storage
-  useEffect(() => {
-    const starred = readStarred();
-    if (Object.keys(starred).length === 0) return;
-    setProblemData((prev) => {
-      const next = { ...prev } as Record<number, ProblemData>;
-      for (const [idStr, is] of Object.entries(starred)) {
-        const id = Number(idStr);
-        next[id] = {
-          notes: next[id]?.notes || "",
-          rating: next[id]?.rating || null,
-          starred: !!is,
-        };
-      }
-      return next;
-    });
-  }, []);
+    setProblemData(next);
 
-  // Initialize ratings state from storage so it persists between sessions
-  useEffect(() => {
-    const ratings = readRatings();
-    if (Object.keys(ratings).length === 0) return;
-    setProblemData((prev) => {
-      const next = { ...prev } as Record<number, ProblemData>;
-      for (const [idStr, rating] of Object.entries(ratings)) {
-        const id = Number(idStr);
-        next[id] = {
-          notes: next[id]?.notes || "",
-          rating: (rating as string) || null,
-          starred: next[id]?.starred || false,
-        };
-      }
-      return next;
-    });
-  }, []);
+    // Solved problems are tracked via problemRatings (rating !== "exhausting")
+    // No need for separate state - can be computed from problemRatings
+  }, [problemRatings, starredProblems]);
 
   // Listen for global open-problem requests (from RightSidebar recalls etc.)
   useEffect(() => {
@@ -198,7 +120,7 @@ export function ProblemsList({
               !!v.starred,
             ])
           )
-        : readStarred();
+        : starredProblems;
       const starIds = new Set(
         Object.entries(starMap)
           .filter(([, val]) => !!val)
@@ -208,17 +130,16 @@ export function ProblemsList({
     }
 
     if (filterRecallType) {
-      const recalls = readRecalls();
       const ids = new Set(
-        Object.entries(recalls)
-          .filter(([, entry]) => (entry as any).type === filterRecallType)
+        Object.entries(problemRecalls)
+          .filter(([, entry]) => entry.type === filterRecallType)
           .map(([id]) => Number(id))
       );
       base = base.filter((p) => ids.has(p.id));
     }
 
     return base;
-  }, [filterStarredOnly, problemData, filterRecallType]);
+  }, [filterStarredOnly, problemData, filterRecallType, problemRecalls]);
 
   const filteredProblems = useMemo(() => {
     return baseProblems.filter((problem) => {
@@ -231,9 +152,8 @@ export function ProblemsList({
   const sortedProblems = useMemo(() => {
     // If viewing recall lists, sort by nearest due date
     if (filterRecallType) {
-      const recalls = readRecalls();
       const dueOf = (id: number) => {
-        const entry = recalls[id];
+        const entry = problemRecalls[id];
         if (!entry) return Number.MAX_SAFE_INTEGER;
         const daysDelay = entry.type === "incomprehensible" ? 5 : 3;
         return entry.assignedAt + daysDelay * 24 * 60 * 60 * 1000;
@@ -245,7 +165,7 @@ export function ProblemsList({
       if (sortDirection === "asc") return a.eloScore - b.eloScore;
       return b.eloScore - a.eloScore;
     });
-  }, [filteredProblems, sortDirection, filterRecallType]);
+  }, [filteredProblems, sortDirection, filterRecallType, problemRecalls]);
 
   const totalPages = Math.ceil(sortedProblems.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -272,119 +192,87 @@ export function ProblemsList({
     }));
   };
 
-  const handleRatingChange = (rating: string | null) => {
+  const handleRatingChange = async (rating: string | null) => {
     if (!selectedProblem) return;
-    setProblemData((prev) => {
-      const updated = {
-        ...prev,
-        [selectedProblem.id]: {
-          notes: prev[selectedProblem.id]?.notes || "",
-          rating,
-          starred: prev[selectedProblem.id]?.starred || false,
-        },
-      } as Record<number, ProblemData>;
 
-      // persist to localStorage
-      const currentRatings = readRatings();
-      const nextRatings: RatingMap = {
-        ...currentRatings,
-        [selectedProblem.id]: rating,
-      };
-      // Do not store nulls as keys to keep storage lean
-      if (rating === null) {
-        delete nextRatings[selectedProblem.id];
-      }
-      writeRatings(nextRatings);
+    const problemId = selectedProblem.id;
+    console.log(`🎯 Rating change: Problem ${problemId} -> ${rating}`);
 
-      // ELO calculation based on solve state change
-      const problemId = selectedProblem.id;
-      const previousRating = prev[selectedProblem.id]?.rating || null;
+    // Update local state immediately (optimistic update is handled by useData)
+    setProblemData((prev) => ({
+      ...prev,
+      [problemId]: {
+        notes: prev[problemId]?.notes || "",
+        rating,
+        starred: prev[problemId]?.starred || false,
+      },
+    }));
 
-      // Determine if problem was previously solved and if it's solved now
-      // In ProblemsList: "exhausting" = icecube (not solved), others = solved
-      const wasSolved =
-        previousRating !== null && previousRating !== "exhausting";
-      const isSolvedNow = rating !== null && rating !== "exhausting";
+    // Use database-first update (optimistic updates built-in)
+    const success = await updateProblemRating(problemId, rating);
 
-      if (!wasSolved && isSolvedNow) {
-        // Problem newly solved - just track it
-        setSolvedProblems((prev) => new Set([...prev, problemId]));
+    // Handle recall transitions (challenging/incomprehensible ratings)
+    const previousRating = problemRatings[problemId] || null;
+    const isNowRecall =
+      rating === "challenging" || rating === "incomprehensible";
+    const wasRecall =
+      previousRating === "challenging" || previousRating === "incomprehensible";
 
-        // Persist solved problems
-        const updatedSolvedArray = [...solvedProblems, problemId];
-        localStorage.setItem(
-          "solvedProblems",
-          JSON.stringify(updatedSolvedArray)
-        );
+    if (isNowRecall && !wasRecall) {
+      // Problem assigned to recall - update database
+      console.log(`🔔 Problem ${problemId} assigned to ${rating} recall`);
+      await updateProblemRecall(
+        problemId,
+        rating as "challenging" | "incomprehensible"
+      );
+    } else if (!isNowRecall && wasRecall) {
+      // Problem graduated from recall
+      console.log(`🎓 Problem ${problemId} graduated from recall!`);
+      await updateProblemRecall(problemId, null);
+    }
 
-        console.log(`✅ Problem ${problemId} solved!`);
-      } else if (wasSolved && !isSolvedNow) {
-        // Problem unrated/unsolved - remove from solved
-        setSolvedProblems((prev) => {
-          const updated = new Set(prev);
-          updated.delete(problemId);
-          return updated;
-        });
+    // Log solve state changes (solved = rating !== null && rating !== "exhausting")
+    const wasSolved =
+      previousRating !== null && previousRating !== "exhausting";
+    const isSolvedNow = rating !== null && rating !== "exhausting";
 
-        // Persist solved problems
-        const updatedSolved = [...solvedProblems].filter(
-          (id) => id !== problemId
-        );
-        localStorage.setItem("solvedProblems", JSON.stringify(updatedSolved));
+    if (!wasSolved && isSolvedNow) {
+      console.log(`✅ Problem ${problemId} solved!`);
+    } else if (wasSolved && !isSolvedNow) {
+      console.log(`❌ Problem ${problemId} unrated!`);
+    }
 
-        console.log(`❌ Problem ${problemId} unrated!`);
-      }
-
-      // Update recalls and graduation tracking based on transitions
-      const prevRating = prev[selectedProblem.id]?.rating || null;
-      const isPrevRecall =
-        prevRating === "challenging" || prevRating === "incomprehensible";
-      const isNowRecall =
-        rating === "challenging" || rating === "incomprehensible";
-      const isNowApple = rating === "yum" || rating === "desirable";
-
-      // Read current stores
-      const recalls = readRecalls();
-      const graduatedSet = readGraduatedSet();
-
-      if (isNowRecall) {
-        // Assign or reassign recall with fresh timestamp and type
-        const type = rating as RecallType;
-        const assignedAt = Date.now();
-        recalls[selectedProblem.id] = { type, assignedAt };
-        writeRecalls(recalls);
-        // Immediately notify listeners in this tab without relying on storage event
-        try {
-          window.dispatchEvent(new Event("problem-recalls-changed"));
-        } catch {}
-      } else {
-        // If no longer recall-rated, ensure it's removed from recalls
-        if (recalls[selectedProblem.id]) {
-          delete recalls[selectedProblem.id];
-          writeRecalls(recalls);
-        }
-      }
-
-      // Graduation: transitioned from recall (lemon/broccoli) to apples (red/green)
-      if (isPrevRecall && isNowApple) {
-        graduatedSet[selectedProblem.id] = true;
-        writeGraduatedSet(graduatedSet);
-      }
-
-      return updated;
-    });
+    if (!success) {
+      console.error(
+        `❌ Failed to update problem ${problemId} rating to database`
+      );
+      // Optimistic update will be rolled back automatically by useData
+    }
   };
 
-  const toggleStar = (id: number) => {
+  const toggleStar = async (id: number) => {
+    const currentStarred = starredProblems[id] || false;
+    const newStarred = !currentStarred;
+
+    console.log(`⭐ Toggling star for problem ${id}: ${newStarred}`);
+
+    // Update local state optimistically
     setProblemData((prev) => ({
       ...prev,
       [id]: {
         notes: prev[id]?.notes || "",
         rating: prev[id]?.rating || null,
-        starred: !prev[id]?.starred,
+        starred: newStarred,
       },
     }));
-    writeStarred({ ...readStarred(), [id]: !problemData[id]?.starred });
+
+    // Use database-first update (optimistic updates built-in)
+    const success = await updateStarredProblem(id, newStarred);
+
+    if (!success) {
+      console.error(`❌ Failed to update star for problem ${id}`);
+      // Optimistic update will be rolled back automatically by useData
+    }
   };
 
   const getRatingEmoji = (problemId: number) => {
@@ -496,7 +384,6 @@ export function ProblemsList({
           {/* Sort pill */}
           <Button
             type="button"
-            variant="outline"
             onClick={() => {
               setSortDirection((prev) =>
                 prev === "asc" ? "desc" : prev === "desc" ? null : "asc"

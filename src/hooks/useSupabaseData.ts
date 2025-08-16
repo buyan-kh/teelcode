@@ -9,12 +9,11 @@ interface UseSupabaseDataReturn {
   starredProblems: Record<number, boolean>;
   problemRecalls: Record<number, { type: string; assignedAt: number }>;
   marathonSessions: Record<string, supabaseService.MarathonSession>;
-  eloGains: Record<number, number>;
 
   // Loading states
   isLoading: boolean;
 
-  // Update functions
+  // Update functions (with optimistic updates)
   updateProblemRating: (
     problemId: number,
     rating: string | null,
@@ -42,7 +41,6 @@ interface UseSupabaseDataReturn {
     updates: Partial<supabaseService.MarathonSession>
   ) => Promise<boolean>;
   deleteMarathonSession: (sessionId: string) => Promise<boolean>;
-  // ELO gain functions removed
 
   // Utility functions
   refreshData: () => Promise<void>;
@@ -66,12 +64,11 @@ export function useSupabaseData(): UseSupabaseDataReturn {
   const [marathonSessions, setMarathonSessions] = useState<
     Record<string, supabaseService.MarathonSession>
   >({});
-  const [eloGains, setEloGains] = useState<Record<number, number>>({});
 
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load all user data from Supabase
+  // Load all user data from Supabase (database is source of truth)
   const loadUserData = useCallback(async () => {
     if (!user) {
       // Clear data when no user
@@ -80,15 +77,14 @@ export function useSupabaseData(): UseSupabaseDataReturn {
       setStarredProblems({});
       setProblemRecalls({});
       setMarathonSessions({});
-      setEloGains({});
       setIsLoading(false);
       return;
     }
 
+    setIsLoading(true);
     try {
-      setIsLoading(true);
+      console.log("📥 Loading user data from Supabase...");
 
-      // Load all data in parallel
       const [profile, ratings, starred, recalls, sessions] = await Promise.all([
         supabaseService.getCurrentUserProfile(),
         supabaseService.getUserProblemRatings(),
@@ -97,86 +93,186 @@ export function useSupabaseData(): UseSupabaseDataReturn {
         supabaseService.getUserMarathonSessions(),
       ]);
 
+      // MERGE Supabase data with existing localStorage data (don't overwrite!)
       setUserProfile(profile);
-      setProblemRatings(ratings);
-      setStarredProblems(starred);
-      setProblemRecalls(recalls);
-      setMarathonSessions(sessions);
-      setEloGains({}); // No ELO gains anymore
 
-      // Migration is now handled automatically by useLocalStorageSync
-      // No need for manual migration anymore
-      console.log("📝 Auto-sync system handles data migration automatically");
+      // For ratings, starred, recalls - merge with existing localStorage
+      setProblemRatings((prev) => {
+        const merged = { ...prev, ...ratings };
+        localStorage.setItem("problemRatings", JSON.stringify(merged));
+        return merged;
+      });
+
+      setStarredProblems((prev) => {
+        const merged = { ...prev, ...starred };
+        localStorage.setItem("starredProblems", JSON.stringify(merged));
+        return merged;
+      });
+
+      setProblemRecalls((prev) => {
+        const merged = { ...prev, ...recalls };
+        localStorage.setItem("problemRecalls", JSON.stringify(merged));
+        return merged;
+      });
+
+      setMarathonSessions((prev) => {
+        const merged = { ...prev, ...sessions };
+        localStorage.setItem("marathonSessions", JSON.stringify(merged));
+        return merged;
+      });
+
+      console.log("💾 Merged and cached data to localStorage");
+
+      console.log("✅ User data loaded successfully");
     } catch (error) {
-      console.error("Error loading user data:", error);
+      console.error("❌ Error loading user data:", error);
     } finally {
       setIsLoading(false);
     }
   }, [user]);
 
-  // Load data when user changes
+  // Load data on user change
   useEffect(() => {
     if (!authLoading) {
+      // Load from cache first for instant UI, then load fresh data
+      if (user) {
+        try {
+          const cachedRatings = localStorage.getItem("problemRatings");
+          const cachedStarred = localStorage.getItem("starredProblems");
+          const cachedRecalls = localStorage.getItem("problemRecalls");
+          const cachedSessions = localStorage.getItem("marathonSessions");
+
+          if (cachedRatings) setProblemRatings(JSON.parse(cachedRatings));
+          if (cachedStarred) setStarredProblems(JSON.parse(cachedStarred));
+          if (cachedRecalls) setProblemRecalls(JSON.parse(cachedRecalls));
+          if (cachedSessions) setMarathonSessions(JSON.parse(cachedSessions));
+
+          console.log("⚡ Loaded cached data for instant UI");
+        } catch (error) {
+          console.warn("Failed to load cached data:", error);
+        }
+      }
+
+      // Load fresh data from database
       loadUserData();
     }
   }, [user, authLoading, loadUserData]);
 
-  // Update functions with optimistic updates
+  // Optimistic update functions (update UI first, then database)
   const updateProblemRating = useCallback(
     async (problemId: number, rating: string | null, notes?: string) => {
-      // Optimistic update
-      if (rating === null) {
+      console.log(`🔄 Updating problem ${problemId} rating to: ${rating}`);
+
+      // Store previous value for potential rollback
+      const previousRating = problemRatings[problemId] || null;
+
+      // 1. Optimistic update - Update UI immediately
+      setProblemRatings((prev) => {
+        const newRatings = { ...prev };
+        if (rating === null) {
+          delete newRatings[problemId];
+        } else {
+          newRatings[problemId] = rating;
+        }
+        return newRatings;
+      });
+
+      // 2. Update database
+      try {
+        console.log(
+          `🚀 About to call supabaseService.updateProblemRating(${problemId}, "${rating}", ${notes}, ${user?.id})`
+        );
+        const success = await supabaseService.updateProblemRating(
+          problemId,
+          rating,
+          notes,
+          user?.id // Pass user ID from auth context
+        );
+        console.log(
+          `🚀 supabaseService.updateProblemRating returned: ${success}`
+        );
+
+        if (success) {
+          // Update localStorage cache
+          const currentRatings = { ...problemRatings };
+          if (rating === null) {
+            delete currentRatings[problemId];
+          } else {
+            currentRatings[problemId] = rating;
+          }
+          localStorage.setItem(
+            "problemRatings",
+            JSON.stringify(currentRatings)
+          );
+          console.log(`✅ Problem ${problemId} rating updated successfully`);
+          return true;
+        } else {
+          throw new Error("Database update failed");
+        }
+      } catch (error) {
+        console.error(
+          `❌ Failed to update problem ${problemId} rating:`,
+          error
+        );
+
+        // 3. Rollback optimistic update on failure
         setProblemRatings((prev) => {
           const newRatings = { ...prev };
-          delete newRatings[problemId];
+          if (previousRating === null) {
+            delete newRatings[problemId];
+          } else {
+            newRatings[problemId] = previousRating;
+          }
           return newRatings;
         });
-      } else {
-        setProblemRatings((prev) => ({ ...prev, [problemId]: rating }));
+
+        return false;
       }
-
-      const success = await supabaseService.updateProblemRating(
-        problemId,
-        rating,
-        notes
-      );
-
-      if (!success) {
-        // Revert optimistic update on failure
-        await loadUserData();
-      }
-
-      return success;
     },
-    [loadUserData]
+    [problemRatings]
   );
 
   const updateStarredProblem = useCallback(
     async (problemId: number, isStarred: boolean) => {
+      console.log(`🔄 Updating problem ${problemId} starred to: ${isStarred}`);
+
+      const previousStarred = starredProblems[problemId] || false;
+
       // Optimistic update
-      if (isStarred) {
-        setStarredProblems((prev) => ({ ...prev, [problemId]: true }));
-      } else {
-        setStarredProblems((prev) => {
-          const newStarred = { ...prev };
-          delete newStarred[problemId];
-          return newStarred;
-        });
+      setStarredProblems((prev) => ({ ...prev, [problemId]: isStarred }));
+
+      try {
+        const success = await supabaseService.updateStarredProblem(
+          problemId,
+          isStarred
+        );
+
+        if (success) {
+          const currentStarred = { ...starredProblems, [problemId]: isStarred };
+          localStorage.setItem(
+            "starredProblems",
+            JSON.stringify(currentStarred)
+          );
+          console.log(`✅ Problem ${problemId} starred updated successfully`);
+          return true;
+        } else {
+          throw new Error("Database update failed");
+        }
+      } catch (error) {
+        console.error(
+          `❌ Failed to update problem ${problemId} starred:`,
+          error
+        );
+
+        // Rollback
+        setStarredProblems((prev) => ({
+          ...prev,
+          [problemId]: previousStarred,
+        }));
+        return false;
       }
-
-      const success = await supabaseService.updateStarredProblem(
-        problemId,
-        isStarred
-      );
-
-      if (!success) {
-        // Revert optimistic update on failure
-        await loadUserData();
-      }
-
-      return success;
     },
-    [loadUserData]
+    [starredProblems]
   );
 
   const updateProblemRecall = useCallback(
@@ -184,53 +280,98 @@ export function useSupabaseData(): UseSupabaseDataReturn {
       problemId: number,
       recallType: "challenging" | "incomprehensible" | null
     ) => {
+      console.log(`🔄 Updating problem ${problemId} recall to: ${recallType}`);
+
+      const previousRecall = problemRecalls[problemId] || null;
+
       // Optimistic update
-      if (recallType === null) {
-        setProblemRecalls((prev) => {
-          const newRecalls = { ...prev };
+      setProblemRecalls((prev) => {
+        const newRecalls = { ...prev };
+        if (recallType === null) {
           delete newRecalls[problemId];
-          return newRecalls;
-        });
-      } else {
-        setProblemRecalls((prev) => ({
-          ...prev,
-          [problemId]: {
+        } else {
+          newRecalls[problemId] = {
             type: recallType,
             assignedAt: Date.now(),
-          },
-        }));
+          };
+        }
+        return newRecalls;
+      });
+
+      try {
+        const success = await supabaseService.updateProblemRecall(
+          problemId,
+          recallType
+        );
+
+        if (success) {
+          const currentRecalls = { ...problemRecalls };
+          if (recallType === null) {
+            delete currentRecalls[problemId];
+          } else {
+            currentRecalls[problemId] = {
+              type: recallType,
+              assignedAt: Date.now(),
+            };
+          }
+          localStorage.setItem(
+            "problemRecalls",
+            JSON.stringify(currentRecalls)
+          );
+          console.log(`✅ Problem ${problemId} recall updated successfully`);
+          return true;
+        } else {
+          throw new Error("Database update failed");
+        }
+      } catch (error) {
+        console.error(
+          `❌ Failed to update problem ${problemId} recall:`,
+          error
+        );
+
+        // Rollback
+        setProblemRecalls((prev) => {
+          const newRecalls = { ...prev };
+          if (previousRecall === null) {
+            delete newRecalls[problemId];
+          } else {
+            newRecalls[problemId] = previousRecall;
+          }
+          return newRecalls;
+        });
+        return false;
       }
-
-      const success = await supabaseService.updateProblemRecall(
-        problemId,
-        recallType
-      );
-
-      if (!success) {
-        // Revert optimistic update on failure
-        await loadUserData();
-      }
-
-      return success;
     },
-    [loadUserData]
+    [problemRecalls]
   );
 
-  const updateUserProfileLocal = useCallback(
+  const updateUserProfile = useCallback(
     async (updates: Partial<supabaseService.UserProfile>) => {
+      console.log("🔄 Updating user profile:", updates);
+
+      const previousProfile = userProfile;
+
       // Optimistic update
       setUserProfile((prev) => (prev ? { ...prev, ...updates } : null));
 
-      const success = await supabaseService.updateUserProfile(updates);
+      try {
+        const success = await supabaseService.updateUserProfile(updates);
 
-      if (!success) {
-        // Revert optimistic update on failure
-        await loadUserData();
+        if (success) {
+          console.log("✅ User profile updated successfully");
+          return true;
+        } else {
+          throw new Error("Database update failed");
+        }
+      } catch (error) {
+        console.error("❌ Failed to update user profile:", error);
+
+        // Rollback
+        setUserProfile(previousProfile);
+        return false;
       }
-
-      return success;
     },
-    [loadUserData]
+    [userProfile]
   );
 
   const createMarathonSession = useCallback(
@@ -240,17 +381,25 @@ export function useSupabaseData(): UseSupabaseDataReturn {
         "id" | "user_id" | "created_at" | "updated_at"
       >
     ) => {
-      const sessionId = await supabaseService.createMarathonSession(session);
+      console.log("🔄 Creating marathon session:", session);
 
-      if (sessionId) {
-        // Refresh sessions data
-        const sessions = await supabaseService.getUserMarathonSessions();
-        setMarathonSessions(sessions);
+      try {
+        const sessionId = await supabaseService.createMarathonSession(session);
+
+        if (sessionId) {
+          // Refresh data to get the new session
+          await loadUserData();
+          console.log("✅ Marathon session created successfully");
+          return sessionId;
+        } else {
+          throw new Error("Failed to create session");
+        }
+      } catch (error) {
+        console.error("❌ Failed to create marathon session:", error);
+        return null;
       }
-
-      return sessionId;
     },
-    []
+    [loadUserData]
   );
 
   const updateMarathonSession = useCallback(
@@ -258,32 +407,59 @@ export function useSupabaseData(): UseSupabaseDataReturn {
       sessionId: string,
       updates: Partial<supabaseService.MarathonSession>
     ) => {
+      console.log(`🔄 Updating marathon session ${sessionId}:`, updates);
+
+      const previousSession = marathonSessions[sessionId];
+
       // Optimistic update
       setMarathonSessions((prev) => ({
         ...prev,
-        [sessionId]: {
-          ...prev[sessionId],
-          ...updates,
-        } as supabaseService.MarathonSession,
+        [sessionId]: { ...prev[sessionId], ...updates },
       }));
 
-      const success = await supabaseService.updateMarathonSession(
-        sessionId,
-        updates
-      );
+      try {
+        const success = await supabaseService.updateMarathonSession(
+          sessionId,
+          updates
+        );
 
-      if (!success) {
-        // Revert optimistic update on failure
-        await loadUserData();
+        if (success) {
+          const currentSessions = {
+            ...marathonSessions,
+            [sessionId]: { ...marathonSessions[sessionId], ...updates },
+          };
+          localStorage.setItem(
+            "marathonSessions",
+            JSON.stringify(currentSessions)
+          );
+          console.log(`✅ Marathon session ${sessionId} updated successfully`);
+          return true;
+        } else {
+          throw new Error("Database update failed");
+        }
+      } catch (error) {
+        console.error(
+          `❌ Failed to update marathon session ${sessionId}:`,
+          error
+        );
+
+        // Rollback
+        setMarathonSessions((prev) => ({
+          ...prev,
+          [sessionId]: previousSession,
+        }));
+        return false;
       }
-
-      return success;
     },
-    [loadUserData]
+    [marathonSessions]
   );
 
   const deleteMarathonSession = useCallback(
     async (sessionId: string) => {
+      console.log(`🔄 Deleting marathon session ${sessionId}`);
+
+      const previousSession = marathonSessions[sessionId];
+
       // Optimistic update
       setMarathonSessions((prev) => {
         const newSessions = { ...prev };
@@ -291,21 +467,37 @@ export function useSupabaseData(): UseSupabaseDataReturn {
         return newSessions;
       });
 
-      const success = await supabaseService.deleteMarathonSession(sessionId);
+      try {
+        const success = await supabaseService.deleteMarathonSession(sessionId);
 
-      if (!success) {
-        // Revert optimistic update on failure
-        await loadUserData();
+        if (success) {
+          const currentSessions = { ...marathonSessions };
+          delete currentSessions[sessionId];
+          localStorage.setItem(
+            "marathonSessions",
+            JSON.stringify(currentSessions)
+          );
+          console.log(`✅ Marathon session ${sessionId} deleted successfully`);
+          return true;
+        } else {
+          throw new Error("Database delete failed");
+        }
+      } catch (error) {
+        console.error(
+          `❌ Failed to delete marathon session ${sessionId}:`,
+          error
+        );
+
+        // Rollback
+        setMarathonSessions((prev) => ({
+          ...prev,
+          [sessionId]: previousSession,
+        }));
+        return false;
       }
-
-      return success;
     },
-    [loadUserData]
+    [marathonSessions]
   );
-
-  // ELO gain functions removed
-
-  // Migration is now handled automatically by useLocalStorageSync
 
   return {
     // Data states
@@ -314,7 +506,6 @@ export function useSupabaseData(): UseSupabaseDataReturn {
     starredProblems,
     problemRecalls,
     marathonSessions,
-    eloGains,
 
     // Loading states
     isLoading: isLoading || authLoading,
@@ -323,11 +514,10 @@ export function useSupabaseData(): UseSupabaseDataReturn {
     updateProblemRating,
     updateStarredProblem,
     updateProblemRecall,
-    updateUserProfile: updateUserProfileLocal,
+    updateUserProfile,
     createMarathonSession,
     updateMarathonSession,
     deleteMarathonSession,
-    // ELO gain functions removed
 
     // Utility functions
     refreshData: loadUserData,

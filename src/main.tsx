@@ -6,7 +6,7 @@ import { ThemeProvider } from "./components/theme-provider.tsx";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
 import { AuthGuard } from "./components/auth/AuthGuard.tsx";
 import { DataProvider } from "./contexts/DataContext.tsx";
-import "./utils/cleanEloData"; // Auto-cleanup ELO localStorage keys
+// ELO cleanup no longer needed - system is now database-first
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
