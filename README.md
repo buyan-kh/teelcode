@@ -28,25 +28,32 @@ I've solved around **150 problems** from this list, ranging from about **1200 EL
 ## ✨ Key Features
 
 ### 🎯 ELO-Ranked Problems
+
 - **2800+ problems** from every LeetCode contest
 - **Codeforces-style ELO ranking** for gradual skill progression
 - Start from your level and climb steadily
 
 ### 🤖 AI-Powered Marathons
+
 Ask our AI to create custom problem marathon lists for you:
-- *"Give me 15 DP + string problems over 1500 ELO"*
-- *"Create a marathon of graph problems between 1300-1600 ELO"*
+
+- _"Give me 15 DP + string problems over 1500 ELO"_
+- _"Create a marathon of graph problems between 1300-1600 ELO"_
 - Personalized learning paths based on your needs
 
 ### 🍎 Smart Problem Rating System
+
 Rate problems you've solved into 4 categories:
+
 - **🍎 Apple** - Easy, well understood
 - **🍏 Green Apple** - Good challenge, solid grasp
 - **🍋 Lemon** - Challenging, needs review
 - **🥦 Broccoli** - Incomprehensible, needs more work
 
 ### 🔄 Spaced Repetition
+
 Lemon and broccoli problems are automatically sent into a spaced repetition list:
+
 - You'll be notified to solve them again in a few days
 - This repeats until you graduate them (rate them apple or green apple)
 - Ensures long-term retention and mastery
@@ -54,12 +61,14 @@ Lemon and broccoli problems are automatically sent into a spaced repetition list
 ## 🔮 Future Plans
 
 ### 🧩 Browser Extension (Coming Soon)
+
 - **Auto-detection**: Know if you've really solved the problem
 - **Mistake analysis**: Identify wrong pitfalls you fell into
 - **Smart hints**: Give a little nudge when you're stuck
 - **Progress tracking**: Seamless integration with your solving process
 
 ### 🏗️ Built-in Compiler
+
 - **Integrated environment**: Solve problems directly on the platform
 - **Real-time feedback**: Immediate validation of your solutions
 - **Learning analytics**: Track your solving patterns and improvements
