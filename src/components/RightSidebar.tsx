@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { leetcodeProblems } from "../data/leetcode-problems";
+import { useData } from "../contexts/DataContext";
 
 type RatingValue =
   | "yum"
@@ -11,82 +12,38 @@ type RatingValue =
   | "exhausting";
 type RatingMap = Record<number, RatingValue>;
 
-const RATING_KEY = "problemRatings";
 const RECALL_KEY = "problemRecalls";
 const GRADUATED_SET_KEY = "recallGraduatedIds";
 
-function readRatings(): RatingMap {
-  try {
-    const raw = JSON.parse(localStorage.getItem(RATING_KEY) || "{}");
-    // Filter to only known rating values
-    const allowed = new Set([
-      "yum",
-      "desirable",
-      "challenging",
-      "incomprehensible",
-      "exhausting",
-    ]);
-    const result: RatingMap = {};
-    for (const [k, v] of Object.entries(raw)) {
-      if (allowed.has(v as string)) result[Number(k)] = v as RatingValue;
-    }
-    return result;
-  } catch {
-    return {} as RatingMap;
-  }
-}
-
 export function RightSidebar() {
-  const [ratings, setRatings] = useState<RatingMap>({});
-  const [recalls, setRecalls] = useState<
-    Record<
-      number,
-      { type: "challenging" | "incomprehensible"; assignedAt: number }
-    >
-  >({});
+  // Use shared data hook instead of localStorage
+  const { problemRatings, problemRecalls } = useData();
+
+  // Debug: Track when problemRatings changes
+  useEffect(() => {
+    console.log("📊 problemRatings changed in Sidebar:", problemRatings);
+  }, [problemRatings]);
   // Placeholder for future metrics (used previously for Graduations)
   const [, /* graduatedSet */ setGraduatedSet] = useState<
     Record<number, boolean>
   >({});
   const [, setNowTs] = useState<number>(() => Date.now());
-  // ELO tracking removed
 
-  // Load on mount and subscribe to changes (same-tab and cross-tab)
+  // Use shared problemRecalls from useSupabaseData instead of local state
+  // const [recalls, setRecalls] = useState<...>({}); // REMOVED - using shared state
+
+  // Load graduated set from localStorage (not yet in Supabase)
   useEffect(() => {
-    const loadAll = () => {
-      setRatings(readRatings());
-      try {
-        const r = JSON.parse(localStorage.getItem(RECALL_KEY) || "{}");
-        setRecalls(r || {});
-      } catch {
-        setRecalls({});
-      }
-      // We still keep this in state for future use, but no longer render it here
+    const loadGraduatedSet = () => {
       try {
         const g = JSON.parse(localStorage.getItem(GRADUATED_SET_KEY) || "{}");
         setGraduatedSet(g || {});
       } catch {
         setGraduatedSet({});
       }
-      // ELO loading removed
     };
 
-    loadAll();
-
-    const onRatingsChange = () => {
-      console.log("🔄 RightSidebar: Ratings changed event");
-      loadAll();
-    };
-    const onRecallsChange = () => loadAll();
-    // ELO change listener removed
-    window.addEventListener("problem-ratings-changed", onRatingsChange);
-    window.addEventListener("problem-recalls-changed", onRecallsChange);
-    window.addEventListener("storage", onRatingsChange);
-    return () => {
-      window.removeEventListener("problem-ratings-changed", onRatingsChange);
-      window.removeEventListener("problem-recalls-changed", onRecallsChange);
-      window.removeEventListener("storage", onRatingsChange);
-    };
+    loadGraduatedSet();
   }, []);
 
   // Tick every minute so due labels update without reload
@@ -98,24 +55,35 @@ export function RightSidebar() {
   const totalProblems = leetcodeProblems.length;
 
   const counts = useMemo(() => {
-    const initial = {
+    const c = {
       yum: 0,
       desirable: 0,
       challenging: 0,
       incomprehensible: 0,
       exhausting: 0,
-    } as Record<RatingValue, number>;
-    for (const value of Object.values(ratings)) {
-      initial[value] += 1;
-    }
-    return initial;
-  }, [ratings]);
+    };
+    Object.values(problemRatings).forEach((value) => {
+      if (value && c[value as RatingValue] !== undefined) {
+        c[value as RatingValue]++;
+      }
+    });
+    return c;
+  }, [problemRatings]);
 
   // Solved = any rated except "exhausting"
   const solvedCount = useMemo(() => {
-    const totalRated = Object.keys(ratings).length;
+    const totalRated = Object.keys(problemRatings).length;
     return Math.max(0, totalRated - (counts.exhausting || 0));
-  }, [ratings, counts.exhausting]);
+  }, [problemRatings, counts.exhausting]);
+
+  // Debug: Track re-renders
+  useEffect(() => {
+    console.log("🔁 RightSidebar re-rendered with:", {
+      ratingsCount: Object.keys(problemRatings).length,
+      counts,
+      solvedCount,
+    });
+  }, [problemRatings, counts, solvedCount]);
 
   const progressPct = useMemo(() => {
     if (totalProblems === 0) return 0;
@@ -125,7 +93,7 @@ export function RightSidebar() {
   // Recalls list with due dates
   const recallList = useMemo(() => {
     const now = Date.now();
-    const entries = Object.entries(recalls).map(([idStr, entry]) => {
+    const entries = Object.entries(problemRecalls).map(([idStr, entry]) => {
       const id = Number(idStr);
       const daysDelay = entry.type === "incomprehensible" ? 5 : 3; // 🥦 5 days, 🍋 3 days
       const dueAt = entry.assignedAt + daysDelay * 24 * 60 * 60 * 1000;
@@ -144,7 +112,7 @@ export function RightSidebar() {
       if (a.isDue !== b.isDue) return a.isDue ? -1 : 1;
       return a.dueAt - b.dueAt;
     });
-  }, [recalls]);
+  }, [problemRecalls]);
 
   // Keeping graduatedSet in state for potential future sidebar widgets
 

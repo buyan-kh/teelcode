@@ -167,14 +167,16 @@ export function useSupabaseData(): UseSupabaseDataReturn {
       const previousRating = problemRatings[problemId] || null;
 
       // 1. Optimistic update - Update UI immediately
+      console.log("🎯 Before update:", { ...problemRatings });
       setProblemRatings((prev) => {
-        const newRatings = { ...prev };
+        const next = { ...prev };
         if (rating === null) {
-          delete newRatings[problemId];
+          delete next[problemId];
         } else {
-          newRatings[problemId] = rating;
+          next[problemId] = rating;
         }
-        return newRatings;
+        console.log("🎯 After update:", next);
+        return next;
       });
 
       // 2. Update database
