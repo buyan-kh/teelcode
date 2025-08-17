@@ -21,7 +21,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     <div
       ref={ref}
       {...rest}
-      className={`absolute top-1/2 left-1/2 rounded-xl border border-white bg-black [transform-style:preserve-3d] [will-change:transform] [backface-visibility:hidden] ${
+      className={`absolute top-1/2 left-1/2 rounded-xl border-[5px] border-black bg-black [transform-style:preserve-3d] [will-change:transform] [backface-visibility:hidden] shadow-[inset_0_0_30px_rgba(59,130,246,0.8),inset_0_0_60px_rgba(59,130,246,0.4)] ${
         customClass ?? ""
       } ${rest.className ?? ""}`.trim()}
     >
@@ -55,49 +55,58 @@ const CardSwap: React.FC<CardSwapProps> = ({
   children,
 }) => {
   const childArr = useMemo(() => Children.toArray(children), [children]);
-  const refs = useMemo(
-    () => childArr.map(() => React.createRef<HTMLDivElement>()),
-    [childArr.length]
-  );
+  const refs = useRef<HTMLDivElement[]>([]);
 
   const order = useRef(Array.from({ length: childArr.length }, (_, i) => i));
   const tlRef = useRef<gsap.core.Timeline | null>(null);
   const intervalRef = useRef<number | undefined>(undefined);
   const container = useRef<HTMLDivElement>(null);
 
+  // Initialize refs array if needed
   useEffect(() => {
-    const total = refs.length;
+    if (refs.current.length !== childArr.length) {
+      refs.current = childArr.map((_, i) => refs.current[i] || null);
+    }
+  }, [childArr.length]);
 
-    // Initialize card positions
-    refs.forEach((r, i) => {
-      if (r.current) {
-        const slot = {
-          x: i * cardDistance,
-          y: -i * verticalDistance,
-          z: -i * cardDistance * 1.5,
-          zIndex: total - i,
-        };
+  useEffect(() => {
+    const total = childArr.length;
 
-        gsap.set(r.current, {
-          x: slot.x,
-          y: slot.y,
-          z: slot.z,
-          xPercent: -50,
-          yPercent: -50,
-          skewY: skewAmount,
-          transformOrigin: "center center",
-          zIndex: slot.zIndex,
-          force3D: true,
-        });
-      }
-    });
+    const initPositions = () => {
+      // Initialize card positions
+      refs.current.forEach((el, i) => {
+        if (el) {
+          const slot = {
+            x: i * cardDistance,
+            y: -i * verticalDistance,
+            z: -i * cardDistance * 1.5,
+            zIndex: total - i,
+          };
+
+          gsap.set(el, {
+            x: slot.x,
+            y: slot.y,
+            z: slot.z,
+            xPercent: -50,
+            yPercent: -50,
+            skewY: skewAmount,
+            transformOrigin: "center center",
+            zIndex: slot.zIndex,
+            force3D: true,
+          });
+        }
+      });
+    };
 
     // Animation function
     const swap = () => {
       if (order.current.length < 2) return;
 
+      // Kill any ongoing animation
+      tlRef.current?.kill();
+
       const [front, ...rest] = order.current;
-      const elFront = refs[front].current;
+      const elFront = refs.current[front];
       if (!elFront) return;
 
       const tl = gsap.timeline();
@@ -112,14 +121,14 @@ const CardSwap: React.FC<CardSwapProps> = ({
 
       // Move other cards forward
       rest.forEach((idx, i) => {
-        const el = refs[idx].current;
+        const el = refs.current[idx];
         if (!el) return;
 
         const slot = {
           x: i * cardDistance,
           y: -i * verticalDistance,
           z: -i * cardDistance * 1.5,
-          zIndex: refs.length - i,
+          zIndex: refs.current.length - i,
         };
 
         tl.set(el, { zIndex: slot.zIndex }, "-=0.4");
@@ -138,9 +147,9 @@ const CardSwap: React.FC<CardSwapProps> = ({
 
       // Return front card to back
       const backSlot = {
-        x: (refs.length - 1) * cardDistance,
-        y: -(refs.length - 1) * verticalDistance,
-        z: -(refs.length - 1) * cardDistance * 1.5,
+        x: (refs.current.length - 1) * cardDistance,
+        y: -(refs.current.length - 1) * verticalDistance,
+        z: -(refs.current.length - 1) * cardDistance * 1.5,
         zIndex: 1,
       };
 
@@ -160,23 +169,28 @@ const CardSwap: React.FC<CardSwapProps> = ({
       order.current = [...rest, front];
     };
 
-    // Start animation
-    swap();
-    intervalRef.current = window.setInterval(swap, delay);
+    // Wait for next frame to ensure DOM is ready
+    const frameId = requestAnimationFrame(() => {
+      initPositions();
+      swap();
+      intervalRef.current = window.setInterval(swap, delay);
+    });
 
     // Cleanup
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      tlRef.current?.kill();
+      cancelAnimationFrame(frameId);
     };
-  }, [cardDistance, verticalDistance, delay, skewAmount, refs]);
+  }, [childArr.length, cardDistance, verticalDistance, delay, skewAmount]);
 
   const rendered = childArr.map((child, i) =>
     isValidElement(child)
       ? cloneElement(child, {
           key: i,
-          ref: refs[i],
+          ref: (el: HTMLDivElement) => (refs.current[i] = el),
           style: { width, height, ...((child as any).props.style ?? {}) },
           onClick: (e: React.MouseEvent) => {
             if ((child as any).props.onClick) {
@@ -192,7 +206,11 @@ const CardSwap: React.FC<CardSwapProps> = ({
     <div
       ref={container}
       className="relative perspective-[900px] overflow-visible max-[768px]:scale-[0.75] max-[480px]:scale-[0.55]"
-      style={{ width, height }}
+      style={{
+        width,
+        height,
+        filter: "drop-shadow(0 0 20px rgba(255,255,255,0.5))",
+      }}
     >
       {rendered}
     </div>
