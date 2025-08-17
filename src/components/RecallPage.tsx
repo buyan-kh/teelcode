@@ -35,7 +35,6 @@ export function RecallPage() {
     };
   }, []);
 
-
   const toItems = (type: RecallType) => {
     const items = Object.entries(recalls)
       .filter(([, e]) => e.type === type)
@@ -48,9 +47,9 @@ export function RecallPage() {
         );
         const problem = leetcodeProblems.find((p) => p.id === id);
         let dueText = "due today";
-        if (remainingDays > 1) dueText = `in ${remainingDays} days`;
+        if (remainingDays > 1) dueText = `${remainingDays} days`;
         else if (remainingDays === 1) dueText = "tomorrow";
-        else if (remainingDays <= 0) dueText = "due today";
+        else if (remainingDays <= 0) dueText = "today";
         return {
           id,
           title: problem?.title || `Problem #${id}`,
@@ -76,15 +75,15 @@ export function RecallPage() {
           item ? (
             <div
               key={item.id}
-              className="rounded-lg border bg-white/70 px-3 py-2 flex items-center justify-between text-sm"
+              className="rounded-lg border bg-white/70 px-3 py-2 flex items-center justify-between text-sm h-10"
             >
-              <div className="truncate pr-3">
+              <div className="truncate pr-3 flex items-center">
                 <span className="text-muted-foreground mr-1">{item.id}.</span>
                 <span className="truncate align-middle">
                   {item.title} {suffixEmoji}
                 </span>
               </div>
-              <span className="text-xs rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">
+              <span className="whitespace-nowrap text-xs rounded-full bg-gray-100 px-2 py-0.5 text-gray-600 w-16 text-center">
                 {item.dueText}
               </span>
             </div>
@@ -106,39 +105,19 @@ export function RecallPage() {
 
   return (
     <div className="h-full overflow-y-auto space-y-6">
-      {/* Segmented header */}
-      <div className="relative rounded-[3rem] border border-white/25 bg-white/20 backdrop-blur-2xl backdrop-saturate-150 shadow-sm px-6 py-4">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-[3rem] bg-gradient-to-b from-white/30 via-white/10 to-transparent"
-        />
-        <div className="relative grid grid-cols-3 gap-6">
-          <div className="h-12 rounded-full bg-white/70 flex items-center justify-center text-base font-sf">
-            Alert
-          </div>
-          <div className="h-12 rounded-full bg-white/50 flex items-center justify-center text-base font-sf">
-            lorem
-          </div>
-          <div className="h-12 rounded-full bg-white/50 flex items-center justify-center text-base font-sf">
-            ipsum
-          </div>
-        </div>
-      </div>
-
       {/* Two columns: Lemon (left), Broccoli (right) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Lemon column */}
         <Card className="rounded-[1.5rem] bg-white/80 backdrop-blur-xl border border-white/30 shadow-sm">
           <CardContent className="p-4 md:p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-sf font-semibold">Lemon Problems</h3>
-              <span className="text-xs text-muted-foreground">🍋</span>
+              <h3 className="font-sf font-semibold">🍋 Lemon Problems</h3>
             </div>
             {renderFiveSlots(top5(lemonItems), "🍋")}
             <div className="mt-4 flex justify-end">
               <Button
                 asChild
-                className="rounded-full bg-yellow-300/70 text-black hover:bg-yellow-300"
+                className="absolute rounded-full bg-yellow-300/70 text-black hover:bg-yellow-300"
               >
                 <a href="#/recall-lemon">See More &gt;</a>
               </Button>
@@ -150,14 +129,13 @@ export function RecallPage() {
         <Card className="rounded-[1.5rem] bg-white/80 backdrop-blur-xl border border-white/30 shadow-sm">
           <CardContent className="p-4 md:p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-sf font-semibold">Broccoli Problems</h3>
-              <span className="text-xs text-muted-foreground">🥦</span>
+              <h3 className="font-sf font-semibold">🥦 Broccoli Problems</h3>
             </div>
             {renderFiveSlots(top5(broccoliItems), "🥦")}
             <div className="mt-4 flex justify-end">
               <Button
                 asChild
-                className="rounded-full bg-yellow-300/70 text-black hover:bg-yellow-300"
+                className="absolute rounded-full bg-yellow-300/70 text-black hover:bg-yellow-300"
               >
                 <a href="#/recall-broccoli">See More &gt;</a>
               </Button>

@@ -16,6 +16,14 @@ interface AuthContextType {
     email: string,
     password: string
   ) => Promise<{ user: User | null; error: AuthError | null }>;
+  signInWithGoogle: () => Promise<{
+    user: User | null;
+    error: AuthError | null;
+  }>;
+  signInWithGitHub: () => Promise<{
+    user: User | null;
+    error: AuthError | null;
+  }>;
   signOut: () => Promise<{ error: AuthError | null }>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
 }
@@ -220,6 +228,62 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}`,
+        },
+      });
+
+      if (error) {
+        console.error("Google sign in error:", error);
+        return { user: null, error };
+      }
+
+      // OAuth redirects to provider, so we return success
+      return { user: null, error: null };
+    } catch (error) {
+      console.error("Google sign in exception:", error);
+      return {
+        user: null,
+        error: {
+          message: "An unexpected error occurred",
+          name: "UnexpectedError",
+        } as AuthError,
+      };
+    }
+  };
+
+  const signInWithGitHub = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: `${window.location.origin}`,
+        },
+      });
+
+      if (error) {
+        console.error("GitHub sign in error:", error);
+        return { user: null, error };
+      }
+
+      // OAuth redirects to provider, so we return success
+      return { user: null, error: null };
+    } catch (error) {
+      console.error("GitHub sign in exception:", error);
+      return {
+        user: null,
+        error: {
+          message: "An unexpected error occurred",
+          name: "UnexpectedError",
+        } as AuthError,
+      };
+    }
+  };
+
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -273,6 +337,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
+    signInWithGitHub,
     signOut,
     resetPassword,
   };

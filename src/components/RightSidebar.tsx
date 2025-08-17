@@ -93,7 +93,7 @@ export function RightSidebar() {
     const now = Date.now();
     const entries = Object.entries(problemRecalls).map(([idStr, entry]) => {
       const id = Number(idStr);
-      const daysDelay = entry.type === "incomprehensible" ? 5 : 3; // 🥦 5 days, 🍋 3 days
+      const daysDelay = entry.type === "incomprehensible" ? 5 : 3; // 🥦 5 days, 🍋 0 days (today)
       const dueAt = entry.assignedAt + daysDelay * 24 * 60 * 60 * 1000;
       const isDue = now >= dueAt;
       const problem = leetcodeProblems.find((p) => p.id === id);

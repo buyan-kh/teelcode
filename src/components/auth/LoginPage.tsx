@@ -4,6 +4,7 @@ import { Input } from "../ui/input";
 import { Card, CardContent } from "../ui/card";
 import { useAuth } from "../../contexts/AuthContext";
 import { Eye, EyeOff } from "lucide-react";
+import { OAuthButtons } from "./OAuthButtons";
 
 interface LoginPageProps {
   onToggleMode: () => void;
@@ -158,6 +159,8 @@ export function LoginPage({ onToggleMode }: LoginPageProps) {
                 >
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
+
+                <OAuthButtons loading={loading} onError={setError} />
 
                 <div className="flex items-center justify-between text-sm">
                   <button

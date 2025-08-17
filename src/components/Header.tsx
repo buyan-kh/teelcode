@@ -1,14 +1,15 @@
 // src/components/Header.tsx
 import { useEffect, useState } from "react";
 
+type UserProfile = string;
+
 const PROFILE_KEY = "userProfile";
-function readProfileName(): string {
+function readProfileName(): UserProfile {
   try {
     const raw = localStorage.getItem(PROFILE_KEY);
     if (!raw) return "there";
     const parsed = JSON.parse(raw);
-    const name = (parsed?.name as string) || "there";
-    return name.trim() || "there";
+    return parsed.name || "there";
   } catch {
     return "there";
   }

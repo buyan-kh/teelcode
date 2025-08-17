@@ -4,6 +4,7 @@ import { Input } from "../ui/input";
 import { Card, CardContent } from "../ui/card";
 import { useAuth } from "../../contexts/AuthContext";
 import { Eye, EyeOff, Check, X } from "lucide-react";
+import { OAuthButtons } from "./OAuthButtons";
 
 interface SignUpPageProps {
   onToggleMode: () => void;
@@ -329,6 +330,8 @@ export function SignUpPage({ onToggleMode }: SignUpPageProps) {
               >
                 {loading ? "Creating account..." : "Create Account"}
               </Button>
+
+              <OAuthButtons loading={loading} onError={setError} />
 
               <div className="text-center">
                 <button

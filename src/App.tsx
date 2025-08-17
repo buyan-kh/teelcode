@@ -125,7 +125,7 @@ export default function App() {
       </main>
 
       {/* Right sidebar */}
-      <div className="w-[320px] flex-shrink-0 overflow-y-auto sticky top-0 h-screen py-6">
+      <div className="w-[320px] flex-shrink-0 overflow-y-auto sticky top-0 h-screen py-6 pr-3">
         <RightSidebar />
       </div>
     </div>

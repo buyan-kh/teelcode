@@ -1230,10 +1230,20 @@ export function MarathonPage() {
       <div className="flex-1 flex flex-col h-full">
         {!started && (
           <>
-            {/* Center blob - only show for new chats with no messages */}
+            {/* Center video - only show for new chats with no messages */}
             {messages.length === 1 && (
               <div className="flex-shrink-0 flex justify-center pt-6 pb-4">
-                <div className="w-40 h-40 rounded-full bg-gradient-to-br from-yellow-200 to-yellow-400 blur-[1px] shadow" />
+                <div className="w-40 h-40 rounded-full overflow-hidden shadow">
+                  <video
+                    className="w-full h-full object-cover scale-150"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                  >
+                    <source src="/orber.mp4" type="video/mp4" />
+                  </video>
+                </div>
               </div>
             )}
 
