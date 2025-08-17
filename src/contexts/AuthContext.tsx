@@ -233,7 +233,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}`,
+          redirectTo: "https://teelcode.vercel.app",
         },
       });
 
@@ -241,6 +241,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.error("Google sign in error:", error);
         return { user: null, error };
       }
+
+      // Track OAuth signup attempt
+      console.log("🔍 Google OAuth initiated");
 
       // OAuth redirects to provider, so we return success
       return { user: null, error: null };
@@ -261,7 +264,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {
-          redirectTo: `${window.location.origin}`,
+          redirectTo: "https://teelcode.vercel.app",
         },
       });
 
@@ -269,6 +272,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.error("GitHub sign in error:", error);
         return { user: null, error };
       }
+
+      // Track OAuth signup attempt
+      console.log("🔍 GitHub OAuth initiated");
 
       // OAuth redirects to provider, so we return success
       return { user: null, error: null };

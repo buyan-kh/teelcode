@@ -88,12 +88,18 @@ export async function ensureUserProfile(): Promise<UserProfile | null> {
     if (fetchError && fetchError.code === "PGRST116") {
       console.log(`🆕 Creating new profile for user: ${user.id}`);
 
+      // Determine auth provider
+      const authProvider = user.app_metadata?.provider || "email";
+      console.log(`📊 New user signed up with: ${authProvider}`);
+
       const newProfile = {
         id: user.id,
         username: user.email?.split("@")[0] || "user",
         full_name:
           user.user_metadata?.full_name || user.email || "Anonymous User",
         avatar_url: user.user_metadata?.avatar_url || null,
+        auth_provider: authProvider,
+        signup_date: new Date().toISOString(),
       };
 
       const { data: createdProfile, error: createError } = await supabase
