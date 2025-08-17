@@ -83,11 +83,8 @@ export function LoginPage({ onToggleMode }: LoginPageProps) {
                     alt="Customizable"
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
-                    <span className="text-white text-sm font-medium bg-black/50 px-2 py-1 rounded">
-                      Customizable
-                    </span>
-                    <div className="w-6 h-6 bg-white/20 rounded"></div>
+                  <div className="absolute top-4 left-4 right-4 text-center">
+                    <span className="text-white text-sm font-medium bg-black/50 px-2 py-1 rounded"></span>
                   </div>
                 </div>
               </SwapCard>
@@ -99,9 +96,7 @@ export function LoginPage({ onToggleMode }: LoginPageProps) {
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute top-4 left-4 right-4 text-center">
-                    <span className="text-white text-sm font-medium bg-black/50 px-2 py-1 rounded">
-                      Smooth
-                    </span>
+                    <span className="text-white text-sm font-medium bg-black/50 px-2 py-1 rounded"></span>
                   </div>
                 </div>
               </SwapCard>
@@ -113,9 +108,7 @@ export function LoginPage({ onToggleMode }: LoginPageProps) {
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute top-4 left-4 right-4 text-center">
-                    <span className="text-white text-sm font-medium bg-black/50 px-2 py-1 rounded">
-                      Reliable
-                    </span>
+                    <span className="text-white text-sm font-medium bg-black/50 px-2 py-1 rounded"></span>
                   </div>
                 </div>
               </SwapCard>
